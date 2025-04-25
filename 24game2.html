@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>24 Game Simulator</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .card-box {
+      font-size: 2rem;
+      margin: 0.5rem;
+      padding: 1rem;
+      width: 100px;
+      height: 100px;
+      border: 2px solid #0d6efd;
+      border-radius: 10px;
+      text-align: center;
+      background-color: #fff;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      cursor: move;
+      transition: transform 0.3s ease, background-color 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card-box:active {
+      transform: scale(1.05);
+    }
+    .highlight {
+      background-color: #d1ecf1;
+      border-color: #0c5460;
+    }
+    #operationModal .modal-dialog {
+      max-width: 300px;
+    }
+  </style>
+</head>
+<body class="container py-5">
+  <h1 class="text-center mb-4">24 Game</h1>
+  <p class="text-center text-muted" id="daily-number"></p>
+  <div class="text-center mb-3">
+    <button class="btn btn-secondary" onclick="revealSolution()">Reveal Solution</button>
+    <button class="btn btn-danger" onclick="tryAgain()">Try Again</button>
+  </div>
+  <div id="game-output" class="text-center">
+    <div id="cards" class="d-flex justify-content-center flex-wrap"></div>
+    <h3 id="solution" class="mt-3"></h3>
+  </div>
+  <p class="text-center mt-3" id="try-counter">Tries: 0 / 4</p>
+
+  <!-- Operation Modal -->
+  <div class="modal" tabindex="-1" id="operationModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Choose an Operation</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-center">
+          <button class="btn btn-outline-primary m-1" onclick="applyOperation('+')">+</button>
+          <button class="btn btn-outline-primary m-1" onclick="applyOperation('-')">-</button>
+          <button class="btn btn-outline-primary m-1" onclick="applyOperation('*')">*</button>
+          <button class="btn btn-outline-primary m-1" onclick="applyOperation('/')">/</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const operations = ['+', '-', '*', '/'];
+    let cards = [];
+    let originalCards = [];
+    let solution = null;
+    let dragSource = null;
+    let currentTarget = null;
+    let tryCount = 0;
+    const maxTries = 4;
+
+    function seedRandom(seed) {
+      let x = Math.sin(seed) * 10000;
+      return x - Math.floor(x);
+    }
+
+    function getTodaySeed() {
+      const today = new Date();
+      return today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    }
+
+    function generateSeededCards(seed) {
+      const nums = [];
+      for (let i = 0; i < 4; i++) {
+        const value = Math.floor(seedRandom(seed + i) * 13) + 1;
+        nums.push(value);
+      }
+      return nums;
+    }
+
+    // function generateCards() {
+    //   return Array.from({ length: 4 }, () => Math.floor(Math.random() * 13) + 1);
+    // }
+
+    function playGame() {
+      const seed = getTodaySeed();
+      let found = false;
+      let offset = 0;
+      
+      while (!found && offset < 1000) {
+        const potentialCards = generateSeededCards(seed + offset);
+        const potentialSolution = findSolution(potentialCards);
+        if (potentialSolution) {
+          cards = potentialCards;
+          originalCards = [...cards];
+          solution = potentialSolution;
+          found = true;
+        } else {
+          offset++;
+        }
+      }
+      renderCards();
+      document.getElementById('solution').textContent = '';
+    }
+
+    function tryAgain() {
+      tryCount++;
+      document.getElementById('try-counter').textContent = `Tries: ${tryCount} / ${maxTries}`;
+
+      if (tryCount >= maxTries) {
+        document.querySelector("button.btn-danger").disabled = true;
+        document.getElementById('solution').textContent = `Out of tries! Solution was: ${solution}`;
+        return;
+      }
+
+      cards = [...originalCards];
+      renderCards();
+      document.getElementById('solution').textContent = '';
+    }
+
+    function revealSolution() {
+      const solutionElement = document.getElementById('solution');
+      solutionElement.innerHTML = solution ? `Solution: <code>${solution}</code> = 24` : "No solution found";
+    }
+
+    function renderCards() {
+      const container = document.getElementById('cards');
+      container.innerHTML = '';
+      cards.forEach((value, index) => {
+        const card = document.createElement('div');
+        card.className = 'card-box';
+        card.textContent = Math.round(value);
+        card.draggable = true;
+        card.dataset.index = index;
+
+        card.ondragstart = () => { dragSource = index; };
+        card.ondragover = (e) => {
+          e.preventDefault();
+          currentTarget = index;
+          card.classList.add('highlight');
+        };
+        card.ondragleave = () => card.classList.remove('highlight');
+        card.ondrop = (e) => {
+          e.preventDefault();
+          card.classList.remove('highlight');
+          if (dragSource !== null && dragSource !== index) {
+            currentTarget = index;
+            new bootstrap.Modal(document.getElementById('operationModal')).show();
+          }
+        };
+
+        container.appendChild(card);
+      });
+    }
+
+    function applyOperation(op) {
+      const a = cards[dragSource];
+      const b = cards[currentTarget];
+      let result;
+
+      if (op === '/' && b === 0) {
+        alert("Division by zero!");
+        return;
+      }
+
+      switch (op) {
+        case '+': result = a + b; break;
+        case '-': result = a - b; break;
+        case '*': result = a * b; break;
+        case '/': result = a / b; break;
+      }
+
+      if (!Number.isFinite(result)) return;
+
+      const indicesToRemove = [dragSource, currentTarget].sort((x, y) => y - x);
+      indicesToRemove.forEach(i => cards.splice(i, 1));
+      cards.push(result);
+
+      dragSource = null;
+      currentTarget = null;
+
+      bootstrap.Modal.getInstance(document.getElementById('operationModal')).hide();
+      renderCards();
+
+      if (cards.length === 1 && Math.abs(cards[0] - 24) < 1e-6) {
+        document.getElementById('solution').textContent = "You made 24! 🎉";
+      }
+    }
+
+    function evaluate(expr) {
+      try {
+        const result = eval(expr);
+        return Math.abs(result - 24) < 1e-6;
+      } catch {
+        return false;
+      }
+    }
+
+    function permutations(arr) {
+      if (arr.length <= 1) return [arr];
+      const result = [];
+      for (let i = 0; i < arr.length; i++) {
+        const rest = permutations(arr.slice(0, i).concat(arr.slice(i + 1)));
+        for (let perm of rest) {
+          result.push([arr[i]].concat(perm));
+        }
+      }
+      return result;
+    }
+
+    function getOperationCombos() {
+      const combos = [];
+      for (let a of operations) {
+        for (let b of operations) {
+          for (let c of operations) {
+            combos.push([a, b, c]);
+          }
+        }
+      }
+      return combos;
+    }
+
+    function generateExpressions(nums, ops) {
+      const [a, b, c, d] = nums;
+      const [op1, op2, op3] = ops;
+      return [
+        `(${a}${op1}${b})${op2}(${c}${op3}${d})`,
+        `(((${a}${op1}${b})${op2}${c})${op3}${d})`,
+        `(${a}${op1}(${b}${op2}${c}))${op3}${d}`,
+        `${a}${op1}(((${b}${op2}${c})${op3}${d}))`,
+        `(${a}${op1}${b}${op2}${c})${op3}${d}`
+      ];
+    }
+
+    function findSolution(cards) {
+      const perms = permutations(cards);
+      const opCombos = getOperationCombos();
+
+      for (let nums of perms) {
+        for (let ops of opCombos) {
+          const expressions = generateExpressions(nums, ops);
+          for (let expr of expressions) {
+            if (evaluate(expr)) {
+              return expr;
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    // Initialize on page load
+    window.onload = function() {
+      const date = new Date();
+      const dailyId = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+      document.getElementById("daily-number").textContent = `🗓️ Daily Game: ${dailyId}`;
+      playGame();
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

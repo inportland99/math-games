@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>24 Game Simulator</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .card-box {
+      font-size: 2rem;
+      margin: 0.5rem;
+      padding: 1rem;
+      width: 100px;
+      height: 100px;
+      border: 2px solid #0d6efd;
+      border-radius: 10px;
+      text-align: center;
+      background-color: #fff;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      cursor: move;
+      transition: transform 0.3s ease, background-color 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card-box:active {
+      transform: scale(1.05);
+    }
+    .highlight {
+      background-color: #d1ecf1;
+      border-color: #0c5460;
+    }
+    #operationModal .modal-dialog {
+      max-width: 300px;
+    }
+  </style>
+</head>
+<body class="container py-5">
+  <h1 class="text-center mb-4">24 Game Simulator</h1>
+  <div class="text-center mb-3">
+    <button class="btn btn-primary" onclick="playGame()">Generate New Game</button>
+    <button class="btn btn-danger" onclick="tryAgain()">Try Again</button>
+    <h4 id="tryCounter" class="mt-3">Attempts Left: 4</h4>
+  </div>
+  <div id="game-output" class="text-center">
+    <div id="cards" class="d-flex justify-content-center flex-wrap"></div>
+    <h3 id="solution" class="mt-3"></h3>
+  </div>
+
+  <!-- Operation Modal -->
+  <div class="modal" tabindex="-1" id="operationModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Choose an Operation</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-center">
+          <button class="btn btn-outline-primary m-1" onclick="applyOperation('+')">+</button>
+          <button class="btn btn-outline-primary m-1" onclick="applyOperation('-')">-</button>
+          <button class="btn btn-outline-primary m-1" onclick="applyOperation('*')">*</button>
+          <button class="btn btn-outline-primary m-1" onclick="applyOperation('/')">/</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<!-- 
+  <audio id="successSound" src="https://cdn.pixabay.com/download/audio/2022/10/24/audio_6cf23db818.mp3" preload="auto"></audio>
+  <audio id="errorSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_7d4643d357.mp3" preload="auto"></audio>
+  <audio id="winSound" src="https://cdn.pixabay.com/download/audio/2022/03/16/audio_8a482845bb.mp3" preload="auto"></audio>
+-->
+
+  <script>
+    const operations = ['+', '-', '*', '/'];
+    let cards = [];
+    let originalCards = [];
+    let solution = null;
+    let dragSource = null;
+    let currentTarget = null;
+    let tries = 0;
+    const maxTries = 4;
+
+    function generateCards() {
+      return Array.from({ length: 4 }, () => Math.floor(Math.random() * 13) + 1);
+    }
+
+    function playGame() {
+      let found = false;
+      while (!found) {
+          const potentialCards = generateCards();
+          const potentialSolution = findSolution(potentialCards);
+          if (potentialSolution) {
+            cards = potentialCards;
+            originalCards = [...cards];
+            solution = potentialSolution;
+            found = true;
+          }
+      }
+      renderCards();
+      document.getElementById('solution').innerHTML = `Solution: <code>${solution}</code> = 24`;
+      tries = 0;
+      document.getElementById('tryCounter').textContent = `Attempts Left: ${maxTries - tries}`;
+    }
+
+    function tryAgain() {
+      if (tries < maxTries) {
+        tries++;
+        document.getElementById('tryCounter').textContent = `Attempts Left: ${maxTries - tries}`;
+        cards = [...originalCards];
+        renderCards();
+        document.getElementById('solution').innerHTML = `Solution: <code>${solution}</code> = 24`;
+      } else {
+        alert("You've reached the maximum number of tries!");
+      }
+    }
+
+    function renderCards() {
+      const container = document.getElementById('cards');
+      container.innerHTML = '';
+      cards.forEach((value, index) => {
+        const card = document.createElement('div');
+        card.className = 'card-box';
+        card.textContent = Math.round(value);
+        card.draggable = true;
+        card.dataset.index = index;
+
+        card.ondragstart = (e) => {
+          dragSource = index;
+        };
+
+        card.ondragover = (e) => {
+          e.preventDefault();
+          currentTarget = index;
+          card.classList.add('highlight');
+        };
+
+        card.ondragleave = () => {
+          card.classList.remove('highlight');
+        };
+
+        card.ondrop = (e) => {
+          e.preventDefault();
+          card.classList.remove('highlight');
+          if (dragSource !== null && dragSource !== index) {
+            currentTarget = index;
+            new bootstrap.Modal(document.getElementById('operationModal')).show();
+          }
+        };
+
+        container.appendChild(card);
+      });
+    }
+
+    function applyOperation(op) {
+      const a = cards[dragSource];
+      const b = cards[currentTarget];
+      let result;
+      
+      if (op === '/' && b === 0) {
+        alert("Division by zero!");
+        return;
+      }
+      
+      switch (op) {
+        case '+': result = a + b; break;
+        case '-': result = a - b; break;
+        case '*': result = a * b; break;
+        case '/': result = a / b; break;
+      }
+
+      console.log(`Applying operation: ${a} ${op} ${b} = ${result}`);
+
+      // Ensure we only push valid results (i.e., integers or floating-point numbers).
+      if (isNaN(result)) {
+        alert("Invalid result!");
+        return;
+      }
+
+      const indicesToRemove = [dragSource, currentTarget].sort((x, y) => y - x);
+      indicesToRemove.forEach(i => cards.splice(i, 1));
+      cards.push(result);
+
+      dragSource = null;
+      currentTarget = null;
+
+    //   playSound('successSound');
+      bootstrap.Modal.getInstance(document.getElementById('operationModal')).hide();
+      renderCards();
+
+      if (cards.length === 1 && cards[0] === 24) {
+        document.getElementById('solution').textContent = "You made 24! 🎉";
+        // playSound('winSound');
+      }
+    }
+
+    function evaluate(expr) {
+      try {
+        const result = eval(expr);
+        return Math.abs(result - 24) < 1e-6;
+      } catch {
+        return false;
+      }
+    }
+
+    function permutations(arr) {
+      if (arr.length <= 1) return [arr];
+      const result = [];
+      for (let i = 0; i < arr.length; i++) {
+        const rest = permutations(arr.slice(0, i).concat(arr.slice(i + 1)));
+        for (let perm of rest) {
+          result.push([arr[i]].concat(perm));
+        }
+      }
+      return result;
+    }
+
+    function getOperationCombos() {
+      const combos = [];
+      for (let a of operations) {
+        for (let b of operations) {
+          for (let c of operations) {
+            combos.push([a, b, c]);
+          }
+        }
+      }
+      return combos;
+    }
+
+    function generateExpressions(nums, ops) {
+      const [a, b, c, d] = nums;
+      const [op1, op2, op3] = ops;
+      return [
+        `(${a}${op1}${b})${op2}(${c}${op3}${d})`,
+        `(((${a}${op1}${b})${op2}${c})${op3}${d})`,
+        `(${a}${op1}(${b}${op2}${c}))${op3}${d}`,
+        `${a}${op1}(((${b}${op2}${c})${op3}${d}))`,
+        `(${a}${op1}${b}${op2}${c})${op3}${d}`
+      ];
+    }
+
+    function findSolution(cards) {
+      const perms = permutations(cards);
+      const opCombos = getOperationCombos();
+
+      for (let nums of perms) {
+        for (let ops of opCombos) {
+          const expressions = generateExpressions(nums, ops);
+          for (let expr of expressions) {
+            if (evaluate(expr)) {
+              return expr;
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    // Start the game when the page loads
+    playGame();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
