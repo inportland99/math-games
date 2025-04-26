@@ -36,6 +36,25 @@
     #operationModal .modal-dialog {
       max-width: 300px;
     }
+    @keyframes shake {
+      0% { transform: translate(0, 0); }
+      25% { transform: translate(-5px, 0); }
+      50% { transform: translate(5px, 0); }
+      75% { transform: translate(-5px, 0); }
+      100% { transform: translate(0, 0); }
+    }
+    .shake {
+      animation: shake 0.4s;
+    }
+    .flash {
+      animation: flash 0.4s;
+    }
+
+    @keyframes flash {
+      0% { background-color: #ffc107; } /* Bright yellow flash */
+      100% { background-color: transparent; }
+    }
+
   </style>
 </head>
 <body class="container py-5">
@@ -46,28 +65,16 @@
     <button class="btn btn-danger" onclick="tryAgain()">Try Again</button>
   </div>
   <div id="game-output" class="text-center">
-    <div id="cards" class="d-flex justify-content-center flex-wrap"></div>
+    <div id="cards" class="d-grid gap-2" style="grid-template-columns: repeat(2, 1fr); max-width: 220px; margin: 0 auto;"></div>
+    <div id="operations" class="text-center my-3">
+      <button class="btn btn-outline-primary operation-button m-1" onclick="selectOperator('+')">+</button>
+      <button class="btn btn-outline-primary operation-button m-1" onclick="selectOperator('-')">-</button>
+      <button class="btn btn-outline-primary operation-button m-1" onclick="selectOperator('*')">*</button>
+      <button class="btn btn-outline-primary operation-button m-1" onclick="selectOperator('/')">/</button>
+          </div>
     <h3 id="solution" class="mt-3"></h3>
   </div>
   <p class="text-center mt-3" id="try-counter">Tries: 0 / 4</p>
-
-  <!-- Operation Modal -->
-  <div class="modal" tabindex="-1" id="operationModal">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Choose an Operation</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body text-center">
-          <button class="btn btn-outline-primary m-1" onclick="applyOperation('+')">+</button>
-          <button class="btn btn-outline-primary m-1" onclick="applyOperation('-')">-</button>
-          <button class="btn btn-outline-primary m-1" onclick="applyOperation('*')">*</button>
-          <button class="btn btn-outline-primary m-1" onclick="applyOperation('/')">/</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <script>
     const operations = ['+', '-', '*', '/'];
@@ -78,7 +85,9 @@
     let currentTarget = null;
     let tryCount = 0;
     const maxTries = 4;
-
+    let selectedCardIndex1 = null;
+    let selectedOperator = null;
+    let selectedCardIndex2 = null;
     function seedRandom(seed) {
       let x = Math.sin(seed) * 10000;
       return x - Math.floor(x);
@@ -97,10 +106,6 @@
       }
       return nums;
     }
-
-    // function generateCards() {
-    //   return Array.from({ length: 4 }, () => Math.floor(Math.random() * 13) + 1);
-    // }
 
     function playGame() {
       const seed = getTodaySeed();
@@ -143,6 +148,60 @@
       solutionElement.innerHTML = solution ? `Solution: <code>${solution}</code> = 24` : "No solution found";
     }
 
+    function highlightSelectedOperation() {
+      const operationButtons = document.querySelectorAll('.operation-button');
+      operationButtons.forEach(btn => {
+        if (btn.textContent === selectedOperator) {
+          btn.classList.add('btn-primary');
+          btn.classList.remove('btn-outline-primary');
+        } else {
+          // If clearing the operator, flash the button
+          if (selectedOperator === null && btn.classList.contains('btn-primary')) {
+            btn.classList.add('flash');
+            setTimeout(() => {
+              btn.classList.remove('flash');
+            }, 400);
+          }
+          btn.classList.add('btn-outline-primary');
+          btn.classList.remove('btn-primary');
+        }
+      });
+    }
+
+    function selectOperator(op) {
+      if (selectedCardIndex1 !== null) {
+        selectedOperator = op;
+      }
+      highlightSelectedOperation();
+    }
+
+    function resetSelection() {
+      if (selectedCardIndex1 !== null) {
+        const card = document.getElementById(`card-${selectedCardIndex1}`);
+        card.classList.add('shake');
+
+        // Remove shake class after animation finishes so it can be reused
+        setTimeout(() => {
+          card.classList.remove('shake');
+        }, 400);
+      }
+      selectedCardIndex1 = null;
+      selectedOperator = null;
+      selectedCardIndex2 = null;
+      highlightSelectedOperation(); // clear operator highlight too
+      highlightCards(); // Also clear highlights
+    }
+
+    function highlightCards() {
+      const cardsDOM = document.querySelectorAll('.card-box');
+      cardsDOM.forEach((card, idx) => {
+        card.classList.remove('highlight');
+        if (idx === selectedCardIndex1 || idx === selectedCardIndex2) {
+          card.classList.add('highlight');
+        }
+      });
+    }
+
     function renderCards() {
       const container = document.getElementById('cards');
       container.innerHTML = '';
@@ -152,59 +211,82 @@
         card.textContent = Math.round(value);
         card.draggable = true;
         card.dataset.index = index;
+        card.id = `card-${index}`;
 
-        card.ondragstart = () => { dragSource = index; };
-        card.ondragover = (e) => {
-          e.preventDefault();
-          currentTarget = index;
-          card.classList.add('highlight');
-        };
-        card.ondragleave = () => card.classList.remove('highlight');
-        card.ondrop = (e) => {
-          e.preventDefault();
-          card.classList.remove('highlight');
-          if (dragSource !== null && dragSource !== index) {
-            currentTarget = index;
-            new bootstrap.Modal(document.getElementById('operationModal')).show();
+        card.onclick = () => {
+          if (selectedCardIndex1 === null) {
+            // No card selected yet → select first card
+            selectedCardIndex1 = index;
+            highlightCards();
+          } else if (selectedCardIndex1 === index && selectedCardIndex2 === null) {
+            // Clicking again on the same first card → unselect it and clear operation
+            resetSelection();
+            highlightCards();
+          } else if (selectedCardIndex1 !== null && selectedOperator === null) {
+            // Card already selected but no operator yet → allow changing first card
+            selectedCardIndex1 = index;
+            highlightCards();
+          } else if (selectedCardIndex1 !== null && selectedOperator !== null && index !== selectedCardIndex1) {
+            // First card and operator selected, now picking second card
+            selectedCardIndex2 = index;
+            highlightCards();
+            performOperation();
           }
         };
-
         container.appendChild(card);
       });
     }
 
-    function applyOperation(op) {
-      const a = cards[dragSource];
-      const b = cards[currentTarget];
+    function performOperation(op) {
+      const a = cards[selectedCardIndex1];
+      const b = cards[selectedCardIndex2];
       let result;
-
-      if (op === '/' && b === 0) {
+      console.log(`Performing operation: ${a} ${selectedOperator} ${b}`);
+      if (selectedOperator === '/' && b === 0) {
         alert("Division by zero!");
         return;
       }
 
-      switch (op) {
+      switch (selectedOperator) {
         case '+': result = a + b; break;
         case '-': result = a - b; break;
         case '*': result = a * b; break;
         case '/': result = a / b; break;
       }
 
-      if (!Number.isFinite(result)) return;
-
-      const indicesToRemove = [dragSource, currentTarget].sort((x, y) => y - x);
-      indicesToRemove.forEach(i => cards.splice(i, 1));
-      cards.push(result);
-
-      dragSource = null;
-      currentTarget = null;
-
-      bootstrap.Modal.getInstance(document.getElementById('operationModal')).hide();
-      renderCards();
-
-      if (cards.length === 1 && Math.abs(cards[0] - 24) < 1e-6) {
-        document.getElementById('solution').textContent = "You made 24! 🎉";
+      if (!Number.isInteger(result)) {
+        // playSound('errorSound');
+        resetSelection();
+        return;
       }
+      // Animate moving selectedCard1 onto selectedCard2
+      const card1 = document.getElementById(`card-${selectedCardIndex1}`);
+      const card2 = document.getElementById(`card-${selectedCardIndex2}`);
+      
+      const rect1 = card1.getBoundingClientRect();
+      const rect2 = card2.getBoundingClientRect();
+      
+      const deltaX = rect2.left - rect1.left;
+      const deltaY = rect2.top - rect1.top;
+
+      card1.style.transition = "transform 0.5s ease";
+      card1.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+      setTimeout(() => {
+        // After animation, update cards
+        
+        const indicesToRemove = [selectedCardIndex1, selectedCardIndex2].sort((x, y) => y - x);
+        indicesToRemove.forEach(i => cards.splice(i, 1));
+        cards.push(result);
+
+        resetSelection();
+        renderCards();
+
+        if (cards.length === 1 && cards[0] === 24) {
+          document.getElementById('solution').textContent = "You made 24! 🎉";
+          playSound('winSound');
+        }
+      }, 500); // matches the CSS transition time
     }
 
     function evaluate(expr) {
