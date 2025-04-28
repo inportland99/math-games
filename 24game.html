@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>24 Game Simulator</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
   <style>
     body {
       background-color: #f8f9fa;
     }
     .card-box {
-      font-size: 2rem;
+      font-size: 2.5rem;
       margin: 0.5rem;
       padding: 1rem;
       width: 100px;
@@ -21,58 +23,145 @@
       background-color: #fff;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       cursor: move;
-      transition: transform 0.3s ease, background-color 0.3s ease;
+      transition: transform 0.2s ease, background-color 0.2s ease;
       display: flex;
       align-items: center;
       justify-content: center;
+      color: #0d6efd; 
     }
     .card-box:active {
       transform: scale(1.05);
     }
     .highlight {
-      background-color: #d1ecf1;
-      border-color: #0c5460;
+      background-color: #0d6efd;
+      color:white
     }
     #operationModal .modal-dialog {
       max-width: 300px;
     }
+
+    .navbar {
+      border-bottom: 1px solid #9fa2a5; /* Light gray border */
+    }
+
+    .operation-button {
+      font-size: 1.5rem;
+      font-weight: bold;
+      padding: 0.75rem 1.25rem;
+    }
+
+    .operations-wrapper,
+    .card-grid-wrapper {
+      display: flex;
+      justify-content: center;
+      padding: 1rem 0;
+    }
+
+    #operations,
+    #cards {
+      width: fit-content;
+    }
+
+    /* Hover effect for operations */
+    .operation-button:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Hover effect for cards */
+    .card-box:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+  /* Active effect for operations */
+    @keyframes shake {
+      0% { transform: translate(0, 0); }
+      25% { transform: translate(-5px, 0); }
+      50% { transform: translate(5px, 0); }
+      75% { transform: translate(-5px, 0); }
+      100% { transform: translate(0, 0); }
+    }
+    .shake {
+      animation: shake 0.4s;
+    }
+
+    @keyframes flash {
+      0% { background-color: #07ff34; } /* Bright yellow flash */
+      100% { background-color: transparent; }
+    }
+
+    /* Flashing colors animation for the winning card */
+    @keyframes flashColors {
+      0% { background-color: #0d6efd; color: white; }
+      50% { background-color: white; color: #0d6efd;}
+      100% { background-color: #0d6efd; color: white;} 
+    }
+
+    .flash {
+      animation: flashColors 1s ease-in-out 3;
+    }
+
   </style>
 </head>
 <body class="container py-5">
-  <h1 class="text-center mb-4">24 Game Simulator</h1>
+  <nav class="navbar navbar-light bg-light mb-4">
+    <div class="container d-flex justify-content-between align-items-center">
+      <div></div> <!-- Empty for left alignment -->
+      <span class="navbar-brand mx-auto fw-bold">24 Game</span>
+      <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#helpModal">
+        <span class="fs-5">❓</span>
+      </button>
+    </div>
+  </nav>
+  
+  <p class="text-center text-muted" id="daily-number"></p>
   <div class="text-center mb-3">
-    <button class="btn btn-primary" onclick="playGame()">Generate New Game</button>
+    <button class="btn btn-secondary" onclick="revealSolution()">Reveal Solution</button>
     <button class="btn btn-danger" onclick="tryAgain()">Try Again</button>
-    <h4 id="tryCounter" class="mt-3">Attempts Left: 4</h4>
   </div>
   <div id="game-output" class="text-center">
-    <div id="cards" class="d-flex justify-content-center flex-wrap"></div>
-    <h3 id="solution" class="mt-3"></h3>
+    <div class="card-grid-wrapper">
+      <div id="cards" class="d-grid gap-2" style="grid-template-columns: repeat(2, 1fr);"></div>
+    </div>
+    <div class="operations-wrapper">
+      <div id="operations" class="text-center my-3">
+        <button class="btn btn-outline-primary operation-button m-1" data-operator="+" onclick="selectOperator('+')"><i class="fas fa-plus"></i></button>
+        <button class="btn btn-outline-primary operation-button m-1" data-operator="-" onclick="selectOperator('-')"><i class="fas fa-minus"></i></button>
+        <button class="btn btn-outline-primary operation-button m-1" data-operator="*" onclick="selectOperator('*')"><i class="fas fa-xmark"></i></button>
+        <button class="btn btn-outline-primary operation-button m-1" data-operator="/" onclick="selectOperator('/')"><i class="fas fa-divide"></i></button>
+      </div>
+    </div>
+      <h3 id="solution" class="mt-3"></h3>
   </div>
+  <p class="text-center mt-3" id="try-counter">Tries: 1 / 4</p>
 
-  <!-- Operation Modal -->
-  <div class="modal" tabindex="-1" id="operationModal">
-    <div class="modal-dialog">
+  <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">Choose an Operation</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <h5 class="modal-title" id="helpModalLabel">How to Play</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body text-center">
-          <button class="btn btn-outline-primary m-1" onclick="applyOperation('+')">+</button>
-          <button class="btn btn-outline-primary m-1" onclick="applyOperation('-')">-</button>
-          <button class="btn btn-outline-primary m-1" onclick="applyOperation('*')">*</button>
-          <button class="btn btn-outline-primary m-1" onclick="applyOperation('/')">/</button>
+        <div class="modal-body">
+          <p>The goal is to use all four numbers shown to make the number 24.</p>
+          <ul>
+            <li>You can use addition, subtraction, multiplication, or division.</li>
+            <li>You must use each number exactly once.</li>
+            <li>Click two cards and an operator to combine them into one.</li>
+            <li>Try to reach 24 before you run out of tries!</li>
+          </ul>
+          <hr />
+          <h6 class="mb-2">🎥 Watch how it works:</h6>
+          <video autoplay muted loop playsinline style="width: 100%; border-radius: 10px;">
+            <source src="videos/demo.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>        
         </div>
       </div>
     </div>
   </div>
-<!-- 
-  <audio id="successSound" src="https://cdn.pixabay.com/download/audio/2022/10/24/audio_6cf23db818.mp3" preload="auto"></audio>
-  <audio id="errorSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_7d4643d357.mp3" preload="auto"></audio>
-  <audio id="winSound" src="https://cdn.pixabay.com/download/audio/2022/03/16/audio_8a482845bb.mp3" preload="auto"></audio>
--->
-
+  
   <script>
     const operations = ['+', '-', '*', '/'];
     let cards = [];
@@ -80,41 +169,116 @@
     let solution = null;
     let dragSource = null;
     let currentTarget = null;
-    let tries = 0;
+    let tryCount = 1;
     const maxTries = 4;
+    let selectedCardIndex1 = null;
+    let selectedOperator = null;
+    let selectedCardIndex2 = null;
+    function seedRandom(seed) {
+      let x = Math.sin(seed) * 10000;
+      return x - Math.floor(x);
+    }
 
-    function generateCards() {
-      return Array.from({ length: 4 }, () => Math.floor(Math.random() * 13) + 1);
+    function getTodaySeed() {
+      const today = new Date();
+      return today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    }
+
+    function generateSeededCards(seed) {
+      const nums = [];
+      for (let i = 0; i < 4; i++) {
+        const value = Math.floor(seedRandom(seed + i) * 13) + 1;
+        nums.push(value);
+      }
+      return nums;
     }
 
     function playGame() {
+      const seed = getTodaySeed();
       let found = false;
-      while (!found) {
-          const potentialCards = generateCards();
-          const potentialSolution = findSolution(potentialCards);
-          if (potentialSolution) {
-            cards = potentialCards;
-            originalCards = [...cards];
-            solution = potentialSolution;
-            found = true;
-          }
+      let offset = 0;
+      
+      while (!found && offset < 1000) {
+        const potentialCards = generateSeededCards(seed + offset);
+        const potentialSolution = findSolution(potentialCards);
+        if (potentialSolution) {
+          cards = potentialCards;
+          originalCards = [...cards];
+          solution = potentialSolution;
+          found = true;
+        } else {
+          offset++;
+        }
       }
       renderCards();
-      document.getElementById('solution').innerHTML = `Solution: <code>${solution}</code> = 24`;
-      tries = 0;
-      document.getElementById('tryCounter').textContent = `Attempts Left: ${maxTries - tries}`;
+      document.getElementById('solution').textContent = '';
     }
 
     function tryAgain() {
-      if (tries < maxTries) {
-        tries++;
-        document.getElementById('tryCounter').textContent = `Attempts Left: ${maxTries - tries}`;
-        cards = [...originalCards];
-        renderCards();
-        document.getElementById('solution').innerHTML = `Solution: <code>${solution}</code> = 24`;
-      } else {
-        alert("You've reached the maximum number of tries!");
+      tryCount++;
+      document.getElementById('try-counter').textContent = `Tries: ${tryCount} / ${maxTries}`;
+
+      if (tryCount > maxTries) {
+        document.querySelector("button.btn-danger").disabled = true;
+        document.getElementById('solution').textContent = `Out of tries! One solution is: ${solution}`;
+        return;
       }
+
+      cards = [...originalCards];
+      renderCards();
+      document.getElementById('solution').textContent = '';
+    }
+
+    function revealSolution() {
+      const solutionElement = document.getElementById('solution');
+      solutionElement.innerHTML = solution ? `Solution: <code>${solution}</code> = 24` : "No solution found";
+    }
+
+    function highlightSelectedOperation() {
+      const operationButtons = document.querySelectorAll('.operation-button');
+      operationButtons.forEach(btn => {
+        if (btn.getAttribute('data-operator') === selectedOperator) {
+          btn.classList.add('btn-primary');
+          btn.classList.remove('btn-outline-primary');
+        } else {
+          btn.classList.add('btn-outline-primary');
+          btn.classList.remove('btn-primary');
+        }
+      });
+    }
+
+    function selectOperator(op) {
+      if (selectedCardIndex1 !== null) {
+        selectedOperator = op;
+      }
+      highlightSelectedOperation();
+    }
+
+    function resetSelection() {
+      if (selectedCardIndex1 !== null) {
+        const card = document.getElementById(`card-${selectedCardIndex1}`);
+        card.classList.add('shake');
+
+        // Remove shake class after animation finishes so it can be reused
+        setTimeout(() => {
+          card.classList.remove('shake');
+        }, 400);
+      }
+      selectedCardIndex1 = null;
+      selectedOperator = null;
+      selectedCardIndex2 = null;
+      highlightSelectedOperation(); // clear operator highlight too
+      highlightCards(); // Also clear highlights
+    }
+
+    function highlightCards() {
+      const cardsDOM = document.querySelectorAll('.card-box');
+      cardsDOM.forEach((card, idx) => {
+        card.classList.remove('highlight');
+        if (idx === selectedCardIndex1 || idx === selectedCardIndex2) {
+          card.classList.add('highlight');
+        }
+      });
     }
 
     function renderCards() {
@@ -126,74 +290,121 @@
         card.textContent = Math.round(value);
         card.draggable = true;
         card.dataset.index = index;
+        card.id = `card-${index}`;
 
-        card.ondragstart = (e) => {
-          dragSource = index;
-        };
+        if (value !== null) {
+          card.textContent = Math.round(value);
 
-        card.ondragover = (e) => {
-          e.preventDefault();
-          currentTarget = index;
-          card.classList.add('highlight');
-        };
-
-        card.ondragleave = () => {
-          card.classList.remove('highlight');
-        };
-
-        card.ondrop = (e) => {
-          e.preventDefault();
-          card.classList.remove('highlight');
-          if (dragSource !== null && dragSource !== index) {
-            currentTarget = index;
-            new bootstrap.Modal(document.getElementById('operationModal')).show();
-          }
-        };
-
+          card.onclick = () => {
+            if (selectedCardIndex1 === null) {
+              // No card selected yet → select first card
+              selectedCardIndex1 = index;
+              highlightCards();
+            } else if (selectedCardIndex1 === index && selectedCardIndex2 === null) {
+              // Clicking again on the same first card → unselect it and clear operation
+              resetSelection();
+              highlightCards();
+            } else if (selectedCardIndex1 !== null && selectedOperator === null) {
+              // Card already selected but no operator yet → allow changing first card
+              selectedCardIndex1 = index;
+              highlightCards();
+            } else if (selectedCardIndex1 !== null && selectedOperator !== null && index !== selectedCardIndex1) {
+              // First card and operator selected, now picking second card
+              selectedCardIndex2 = index;
+              highlightCards();
+              performOperation();
+            }
+          };
+        } else {
+          card.style.visibility = "hidden"; // empty spot
+        }
         container.appendChild(card);
       });
     }
 
-    function applyOperation(op) {
-      const a = cards[dragSource];
-      const b = cards[currentTarget];
+    function performOperation(op) {
+      const a = cards[selectedCardIndex1];
+      const b = cards[selectedCardIndex2];
       let result;
-      
-      if (op === '/' && b === 0) {
+      // console.log(`Performing operation: ${a} ${selectedOperator} ${b}`);
+      if (selectedOperator === '/' && b === 0) {
         alert("Division by zero!");
         return;
       }
-      
-      switch (op) {
+
+      switch (selectedOperator) {
         case '+': result = a + b; break;
         case '-': result = a - b; break;
         case '*': result = a * b; break;
         case '/': result = a / b; break;
       }
 
-      console.log(`Applying operation: ${a} ${op} ${b} = ${result}`);
-
-      // Ensure we only push valid results (i.e., integers or floating-point numbers).
-      if (isNaN(result)) {
-        alert("Invalid result!");
+      if (!Number.isInteger(result)) {
+        // playSound('errorSound');
+        resetSelection();
         return;
       }
+      // Animate moving selectedCard1 onto selectedCard2
+      const card1 = document.getElementById(`card-${selectedCardIndex1}`);
+      const card2 = document.getElementById(`card-${selectedCardIndex2}`);
+      
+      const rect1 = card1.getBoundingClientRect();
+      const rect2 = card2.getBoundingClientRect();
+      
+      const deltaX = rect2.left - rect1.left;
+      const deltaY = rect2.top - rect1.top;
 
-      const indicesToRemove = [dragSource, currentTarget].sort((x, y) => y - x);
-      indicesToRemove.forEach(i => cards.splice(i, 1));
-      cards.push(result);
+      card1.style.transition = "transform 0.5s ease";
+      card1.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
 
-      dragSource = null;
-      currentTarget = null;
+      setTimeout(() => {
+        // Update the cards without shrinking the array
+        cards[selectedCardIndex2] = result; // Second card becomes result
+        cards[selectedCardIndex1] = null;   // First card becomes blank
 
-    //   playSound('successSound');
-      bootstrap.Modal.getInstance(document.getElementById('operationModal')).hide();
-      renderCards();
+        resetSelection();
+        renderCards();
 
-      if (cards.length === 1 && cards[0] === 24) {
-        document.getElementById('solution').textContent = "You made 24! 🎉";
+        checkForWin();
+
+      }, 500); // matches the CSS transition time
+    }
+
+    function checkForWin() {
+      const nonNullCards = cards.filter(card => card !== null);
+      if (nonNullCards.length === 1 && nonNullCards[0] === 24) {
+        // Trigger win effect animation
+        animateWin();
+        // document.getElementById('solution').textContent = "You made 24! 🎉";
         // playSound('winSound');
       }
+    }
+
+    // Function to animate the winning card
+    function animateWin() {
+      const container = document.getElementById('cards');
+      const winningCardIndex = cards.findIndex(card => card === 24);
+      const winningCard = document.getElementById(`card-${winningCardIndex}`);
+
+      // Get the container's center position
+      const containerRect = container.getBoundingClientRect();
+      const cardRect = winningCard.getBoundingClientRect();
+
+      const targetX = containerRect.left + containerRect.width / 2 - (cardRect.width / 2);
+      const targetY = containerRect.top + containerRect.height / 2 - (cardRect.height / 2);
+
+      // Calculate the move difference (relative to the card's current position)
+      const deltaX = targetX - cardRect.left;
+      const deltaY = targetY - cardRect.top;
+
+      // Apply smooth transition
+      winningCard.style.transition = "transform 1s ease, background-color 0.5s ease";
+      winningCard.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+      // Wait for the movement to finish before flashing
+      setTimeout(() => {
+        winningCard.classList.add('flash');
+      }, 1000); // wait 1 second (same as transition duration)
     }
 
     function evaluate(expr) {
@@ -258,8 +469,13 @@
       return null;
     }
 
-    // Start the game when the page loads
-    playGame();
+    // Initialize on page load
+    window.onload = function() {
+      const date = new Date();
+      const dailyId = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+      document.getElementById("daily-number").textContent = `🗓️ Daily Game: ${dailyId}`;
+      playGame();
+    }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
