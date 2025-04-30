@@ -12,11 +12,11 @@
       background-color: #f8f9fa;
     }
     .card-box {
-      font-size: 2.5rem;
+      font-size: 3rem;
       margin: 0.5rem;
       padding: 1rem;
-      width: 100px;
-      height: 100px;
+      width: 125px;
+      height: 125px;
       border: 2px solid #0d6efd;
       border-radius: 10px;
       text-align: center;
@@ -29,15 +29,46 @@
       justify-content: center;
       color: #0d6efd; 
     }
-    .card-box:active {
-      transform: scale(1.05);
-    }
+
     .highlight {
       background-color: #0d6efd;
       color:white
     }
+    
     #operationModal .modal-dialog {
       max-width: 300px;
+    }
+
+    .endgame-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+    .endgame-modal.hidden {
+      display: none;
+    }
+
+    #endgame-Modal .modal-body {
+      text-align: center;
+      /* display: flex; */
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #endgame-Modal .modal-body p,
+    #endgame-Modal .modal-body #attempts-matrix,
+    #endgame-Modal .modal-body #share-button {
+      margin-bottom: 1rem;
+      width: 100%;
+      /* display: flex; */
+      justify-content: center;
     }
 
     .navbar {
@@ -96,9 +127,11 @@
     .card-box:hover {
       transform: translateY(-5px);
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      background-color: #0d6efd;
+      color:white
     }
 
-  /* Active effect for operations */
+    /* Active effect for operations */
     @keyframes shake {
       0% { transform: translate(0, 0); }
       25% { transform: translate(-5px, 0); }
@@ -123,7 +156,29 @@
     }
 
     .flash {
-      animation: flashColors 1s ease-in-out 3;
+      animation: flashColors 0.5s ease-in-out 3;
+    }
+
+    .attempt-row {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+
+    .attempt-cell {
+      width: 40px;
+      height: 40px;
+      margin: 2px;
+      background-color: #eee;
+      border: 1px solid blue;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
+      text-align: center;
+      line-height: 40px;
+      border-radius: 6px;
     }
 
   </style>
@@ -153,11 +208,11 @@
       </div>
     </div>
       <h3 id="solution" class="mt-3"></h3>
-  </div>
+    </div>
   <p class="text-center mt-3" id="try-counter">Attempt: 1 of 4</p>
   <div class="text-center mb-3">
     <!-- <button class="btn btn-secondary" onclick="revealSolution()">Reveal Solution</button> -->
-    <button class="btn btn-danger" onclick="tryAgain()">Try Again</button>
+    <button class="btn btn-danger" id="try-again-button" onclick="tryAgain()">Try Again</button>
   </div>
   <br />
   <p class="text-center text-muted" id="daily-number"></p>
@@ -187,6 +242,22 @@
       </div>
     </div>
   </div>
+
+  <div class="modal fade" id="endgame-Modal" tabindex="-1" aria-labelledby="endGameModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="endGameModalLabel">Game Over</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p id="game-result-message"></p>
+          <div id="attempts-matrix" class="mt-4"></div>
+          <button class="btn btn-success" id="share-button">Share <i class="fa-solid fa-share-alt"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>  
   
   <script>
     const operations = ['+', '-', '*', '/'];
@@ -200,6 +271,48 @@
     let selectedCardIndex1 = null;
     let selectedOperator = null;
     let selectedCardIndex2 = null;
+    let attemptsMatrix = [];
+    let currentAttempt = [];
+    
+    function showAttemptsMatrix() {
+      const matrixContainer = document.getElementById("attempts-matrix");
+      matrixContainer.innerHTML = ""; // Clear previous content
+
+      const numberEmoji = ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"];
+      const operationEmojiMap = {
+        "+": "➕",
+        "-": "➖",
+        "*": "✖️",
+        "/": "➗"
+      };
+
+      attemptsMatrix.forEach((attempt, index) => {
+        const rowDiv = document.createElement("div");
+        rowDiv.classList.add("attempts-row");
+
+        let rowText = numberEmoji[index + 1] || `${index + 1}️⃣`;
+
+        for (let i = 0; i < 3; i++) {
+          const op = attempt.operations[i];
+          rowText += op ? operationEmojiMap[op] || "⬜️" : "⬜️";
+        }
+
+        rowText += attempt.didWin ? "🎯" : "❌";
+
+        rowDiv.textContent = rowText;
+        matrixContainer.appendChild(rowDiv);
+      });
+    }
+
+    function recordAttempt(operations, didWin) {
+      attemptsMatrix.push({
+        attemptNumber: attemptsMatrix.length + 1,
+        operations: operations,  // array of operations (could be [])
+        didWin: didWin           // true or false
+      });
+      // showAttemptsMatrix();
+    }
+    
     function seedRandom(seed) {
       let x = Math.sin(seed) * 10000;
       return x - Math.floor(x);
@@ -213,7 +326,7 @@
     function generateSeededCards(seed) {
       const nums = [];
       for (let i = 0; i < 4; i++) {
-        const value = Math.floor(seedRandom(seed + i) * 13) + 1;
+        const value = Math.floor(seedRandom(seed + i) * 9) + 1;
         nums.push(value);
       }
       return nums;
@@ -242,17 +355,22 @@
 
     function tryAgain() {
       tryCount++;
-      document.getElementById('try-counter').textContent = `Tries: ${tryCount} of ${maxTries}`;
 
       if (tryCount > maxTries) {
-        document.querySelector("button.btn-danger").disabled = true;
-        document.getElementById('solution').textContent = `Out of tries! One solution is: ${solution}`;
+        document.getElementById("try-again-button").disabled = true;
+        endGame(false);
+        // document.getElementById('solution').textContent = `Out of tries! One solution is: ${solution}`;
         return;
+      } else {
+        document.getElementById('try-counter').textContent = `Attempt: ${tryCount} of ${maxTries}`;
       }
 
       cards = [...originalCards];
       renderCards();
       document.getElementById('solution').textContent = '';
+
+      recordAttempt(currentAttempt,false); // after a failure
+      currentAttempt = [];
     }
 
     function revealSolution() {
@@ -339,6 +457,7 @@
               selectedCardIndex2 = index;
               highlightCards();
               performOperation();
+              currentAttempt.push(selectedOperator);
             }
           };
         } else {
@@ -348,7 +467,7 @@
       });
     }
 
-    function performOperation(op) {
+    function performOperation() {
       const a = cards[selectedCardIndex1];
       const b = cards[selectedCardIndex2];
       let result;
@@ -360,7 +479,7 @@
 
       switch (selectedOperator) {
         case '+': result = a + b; break;
-        case '-': result = a - b; break;
+        case '-': result = Math.abs(a - b); break;
         case '*': result = a * b; break;
         case '/': result = a / b; break;
       }
@@ -401,12 +520,15 @@
       if (nonNullCards.length === 1 && nonNullCards[0] === 24) {
         // Trigger win effect animation
         animateWin();
-        // document.getElementById('solution').textContent = "You made 24! 🎉";
-        // playSound('winSound');
+        document.getElementById("try-again-button").disabled = true;
+        recordAttempt(currentAttempt, true); // after a win
+        // Add delay before showing the game over popup
+        setTimeout(function() {
+          endGame(true);
+        }, 2000);  // 1000ms delay (same duration as the animation)
       }
     }
 
-    // Function to animate the winning card
     function animateWin() {
       const container = document.getElementById('cards');
       const winningCardIndex = cards.findIndex(card => card === 24);
@@ -431,6 +553,23 @@
       setTimeout(() => {
         winningCard.classList.add('flash');
       }, 1000); // wait 1 second (same as transition duration)
+    }
+
+    function endGame(didWin) {
+      myModal = new bootstrap.Modal(document.getElementById('endgame-Modal'));
+      myModal.show();
+      const message = document.getElementById("game-result-message");
+      message.textContent = didWin ? "🎉 Problem Solved! 🎉" : "I tried! 😞";
+      showAttemptsMatrix(); // This function creates emoji grid text
+      document.getElementById("share-button").addEventListener("click", () => {
+        const modalBodyText = document.querySelector('#endgame-Modal .modal-body').innerText;
+        console.log(modalBodyText);
+        navigator.clipboard.writeText(modalBodyText).then(() => {
+          alert("Your result was copied! Share it with your friends!");
+        }).catch(err => {
+          console.error("Failed to copy: ", err);
+        });
+      });
     }
 
     function evaluate(expr) {
