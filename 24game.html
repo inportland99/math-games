@@ -6,6 +6,8 @@
   <title>Math Plus Academy's Daily 24</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
 
   <style>
     body {
@@ -92,6 +94,7 @@
     .navbar-title {
       font-size: 24px;
       font-weight: bold;
+      font-family: 'Roboto', sans-serif;
     }
 
     #try-counter {
@@ -103,7 +106,10 @@
       font-size: 1.5rem;
       font-weight: bold;
       padding: 0.75rem 1.25rem;
+      border-color: #30be51;
+      color: #30be51;
     }
+    
 
     .operations-wrapper,
     .card-grid-wrapper {
@@ -121,6 +127,13 @@
     .operation-button:hover {
       transform: translateY(-5px);
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      background-color: #30be51;
+      border-color: #30be51;
+    }
+    .operation-button.btn-success {
+      background-color: #30be51;
+      border-color: #30be51;
+      color:white
     }
 
     /* Hover effect for cards */
@@ -185,10 +198,11 @@
 </head>
 <body class="container py-5">
   <nav class="navbar navbar-light bg-light mb-4">
-      <div class="container position-relative justify-content-center d-flex align-items-center">
-      <!-- <button class="navbar-button-left"></button> -->
-      <div class="navbar-title">Daily 24 Challenge</div>
-      <!-- <span class="navbar-brand mx-auto fw-bold">Daily 24 Challenge</span> -->
+    <div class="container position-relative justify-content-center d-flex align-items-center">
+      <div class="navbar-title">
+        Daily 24 Challenge 
+        <span class="badge bg-warning text-dark ms-2" style="font-size: 0.8rem;">Beta</span>
+      </div>
       <button class="btn btn-outline-secondary navbar-button-right" data-bs-toggle="modal" data-bs-target="#helpModal">
         <span class="fs-5">❓</span>
       </button>
@@ -201,10 +215,10 @@
     </div>
     <div class="operations-wrapper">
       <div id="operations" class="text-center my-3">
-        <button class="btn btn-outline-primary operation-button m-1" data-operator="+" onclick="selectOperator('+')"><i class="fas fa-plus"></i></button>
-        <button class="btn btn-outline-primary operation-button m-1" data-operator="-" onclick="selectOperator('-')"><i class="fas fa-minus"></i></button>
-        <button class="btn btn-outline-primary operation-button m-1" data-operator="*" onclick="selectOperator('*')"><i class="fas fa-xmark"></i></button>
-        <button class="btn btn-outline-primary operation-button m-1" data-operator="/" onclick="selectOperator('/')"><i class="fas fa-divide"></i></button>
+        <button class="btn btn-outline-success operation-button m-1" data-operator="+" onclick="selectOperator('+')"><i class="fas fa-plus"></i></button>
+        <button class="btn btn-outline-success operation-button m-1" data-operator="-" onclick="selectOperator('-')"><i class="fas fa-minus"></i></button>
+        <button class="btn btn-outline-success operation-button m-1" data-operator="*" onclick="selectOperator('*')"><i class="fas fa-xmark"></i></button>
+        <button class="btn btn-outline-success operation-button m-1" data-operator="/" onclick="selectOperator('/')"><i class="fas fa-divide"></i></button>
       </div>
     </div>
       <h3 id="solution" class="mt-3"></h3>
@@ -216,7 +230,11 @@
   </div>
   <br />
   <p class="text-center text-muted" id="daily-number"></p>
-
+  <div class="text-center mt-4">
+    <a href="mailto:raj@mathplusacademy.com?subject=Bug Report for Daily 24 Game" class="btn btn-outline-danger">
+      Report a Bug
+    </a>
+  </div>
   <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -273,12 +291,20 @@
     let selectedCardIndex2 = null;
     let attemptsMatrix = [];
     let currentAttempt = [];
-    
+    let gameOver = false;
+    const storageKey = 'daily24game';
+    const statsKey = 'daily24stats';
+
+    function getTodayId() {
+      const d = new Date();
+      return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+    }
+
     function showAttemptsMatrix() {
       const matrixContainer = document.getElementById("attempts-matrix");
       matrixContainer.innerHTML = ""; // Clear previous content
 
-      const numberEmoji = ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"];
+      const numberEmoji = ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣"];
       const operationEmojiMap = {
         "+": "➕",
         "-": "➖",
@@ -310,7 +336,14 @@
         operations: operations,  // array of operations (could be [])
         didWin: didWin           // true or false
       });
-      // showAttemptsMatrix();
+
+      // if (didWin) {
+      //   saveDailyStats(true, attemptsMatrix.length);
+      // } else if (attemptsMatrix.length === maxTries) {
+      //   saveDailyStats(false, 'X');
+      // }
+
+      // saveGameState() // Save the game state after each attempt
     }
     
     function seedRandom(seed) {
@@ -332,7 +365,7 @@
       return nums;
     }
 
-    function playGame() {
+    function setupGame() {
       const seed = getTodaySeed();
       let found = false;
       let offset = 0;
@@ -349,8 +382,8 @@
           offset++;
         }
       }
-      renderCards();
-      document.getElementById('solution').textContent = '';
+      gameEngine();
+      // document.getElementById('solution').textContent = '';
     }
 
     function tryAgain() {
@@ -366,11 +399,12 @@
       }
 
       cards = [...originalCards];
-      renderCards();
+      gameEngine();
       document.getElementById('solution').textContent = '';
 
-      recordAttempt(currentAttempt,false); // after a failure
+      // recordAttempt(currentAttempt,false); // after a failure
       currentAttempt = [];
+      // saveGameState() // Save the game state after each attempt
     }
 
     function revealSolution() {
@@ -382,11 +416,11 @@
       const operationButtons = document.querySelectorAll('.operation-button');
       operationButtons.forEach(btn => {
         if (btn.getAttribute('data-operator') === selectedOperator) {
-          btn.classList.add('btn-primary');
-          btn.classList.remove('btn-outline-primary');
+          btn.classList.add('btn-success');
+          btn.classList.remove('btn-outline-success');
         } else {
-          btn.classList.add('btn-outline-primary');
-          btn.classList.remove('btn-primary');
+          btn.classList.add('btn-outline-success');
+          btn.classList.remove('btn-success');
         }
       });
     }
@@ -425,7 +459,7 @@
       });
     }
 
-    function renderCards() {
+    function gameEngine() {
       const container = document.getElementById('cards');
       container.innerHTML = '';
       cards.forEach((value, index) => {
@@ -508,7 +542,7 @@
         cards[selectedCardIndex1] = null;   // First card becomes blank
 
         resetSelection();
-        renderCards();
+        gameEngine();
 
         checkForWin();
 
@@ -530,29 +564,12 @@
     }
 
     function animateWin() {
-      const container = document.getElementById('cards');
-      const winningCardIndex = cards.findIndex(card => card === 24);
-      const winningCard = document.getElementById(`card-${winningCardIndex}`);
-
-      // Get the container's center position
-      const containerRect = container.getBoundingClientRect();
-      const cardRect = winningCard.getBoundingClientRect();
-
-      const targetX = containerRect.left + containerRect.width / 2 - (cardRect.width / 2);
-      const targetY = containerRect.top + containerRect.height / 2 - (cardRect.height / 2);
-
-      // Calculate the move difference (relative to the card's current position)
-      const deltaX = targetX - cardRect.left;
-      const deltaY = targetY - cardRect.top;
-
-      // Apply smooth transition
-      winningCard.style.transition = "transform 1s ease, background-color 0.5s ease";
-      winningCard.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
-
-      // Wait for the movement to finish before flashing
-      setTimeout(() => {
-        winningCard.classList.add('flash');
-      }, 1000); // wait 1 second (same as transition duration)
+      // Simple burst of confetti
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
     }
 
     function endGame(didWin) {
@@ -634,12 +651,37 @@
       return null;
     }
 
+    // function saveGameState() {
+    //   localStorage.setItem(storageKey, JSON.stringify({
+    //     date: getTodayId(),
+    //     attemptsMatrix: attemptsMatrix,
+    //   }));
+    // }
+
+    // function saveDailyStats(didWin, tries) {
+    //   const stats = JSON.parse(localStorage.getItem(statsKey)) || {};
+    //   const todayId = getTodayId();
+    //   stats[todayId] = { didWin, tries };
+    //   localStorage.setItem(statsKey, JSON.stringify(stats));
+    // }
+
     // Initialize on page load
     window.onload = function() {
-      const date = new Date();
-      const dailyId = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-      document.getElementById("daily-number").textContent = `🗓️ Daily Game: ${dailyId}`;
-      playGame();
+      const todayId = getTodayId();
+      document.getElementById("daily-number").textContent = `🗓️ Daily Game: ${todayId}`;
+
+      const savedState = JSON.parse(localStorage.getItem(storageKey));
+      if (savedState && savedState.date === todayId) {
+        attemptsMatrix = savedState.attemptsMatrix || [];
+        tryCount = attemptsMatrix.length + 1;
+        document.getElementById('try-counter').textContent = `Attempt: ${tryCount} of ${maxTries}`;
+      } else {
+        localStorage.removeItem(storageKey);  // wipe old state
+        attemptsMatrix = [];
+        tryCount = 1;
+        document.getElementById('try-counter').textContent = `Attempt: 1 of ${maxTries}`;
+      }
+      setupGame();
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
