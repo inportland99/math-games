@@ -579,12 +579,19 @@
       message.textContent = didWin ? "🎉 Problem Solved! 🎉" : "I tried! 😞";
       showAttemptsMatrix(); // This function creates emoji grid text
       document.getElementById("share-button").addEventListener("click", () => {
-        const modalBodyText = document.querySelector('#endgame-Modal .modal-body').innerText;
-        console.log(modalBodyText);
-        navigator.clipboard.writeText(modalBodyText).then(() => {
-          alert("Your result was copied! Share it with your friends!");
+        const modalBody = document.querySelector('#endgame-Modal .modal-body');
+        let originalText = modalBody.innerText;
+        // Remove the word "Share"
+        originalText = originalText.replace(/\bShare\b\s*/g, '').trim();
+        // Define title and link (in plain-text form for max compatibility)
+        const titleWithLink = "https://games.mathplusacademy.com/24game.html";
+        // Build plain-text output
+        const plainText = `MPA's Daily 24 Challenge\n${originalText}\n\n${titleWithLink}`;
+        navigator.clipboard.writeText(plainText).then(() => {
+          alert("Copied to clipboard!");
         }).catch(err => {
-          console.error("Failed to copy: ", err);
+          console.error("Clipboard copy failed:", err);
+          alert("Failed to copy to clipboard.");
         });
       });
     }
