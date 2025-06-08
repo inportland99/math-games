@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Math Plus Academy&#39;s Daily 24</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/global.css">
+  
+    <link rel="stylesheet" href="/assets/css/24game.css">
+  
+</head>
+<body>
+  <nav class="navbar navbar-light bg-light mb-2">
+    <div class="container position-relative justify-content-center d-flex align-items-center">
+      <div class="navbar-title">
+        24 Challenge
+        <span class="badge badge-pill bg-warning text-dark ms-2" style="font-size: 0.7rem;">Beta</span>
+      </div>
+      <button class="btn btn-outline-secondary navbar-button-right" data-bs-toggle="modal" data-bs-target="#helpModal">
+        <span class="fs-5">❓</span>
+      </button>
+    </div>
+  </nav>
+
+  
+  <div id="game-output" class="text-center">
+    <div class="card-grid-wrapper">
+      <div id="cards" class="d-grid gap-2" style="grid-template-columns: repeat(2, 1fr);"></div>
+    </div>
+    <div class="operations-wrapper">
+      <div id="operations" class="text-center my-3">
+        <button class="btn btn-outline-success operation-button m-1" data-operator="+" onclick="selectOperator('+')"><i
+            class="fas fa-plus"></i></button>
+        <button class="btn btn-outline-success operation-button m-1" data-operator="-" onclick="selectOperator('-')"><i
+            class="fas fa-minus"></i></button>
+        <button class="btn btn-outline-success operation-button m-1" data-operator="*" onclick="selectOperator('*')"><i
+            class="fas fa-xmark"></i></button>
+        <button class="btn btn-outline-success operation-button m-1" data-operator="/" onclick="selectOperator('/')"><i
+            class="fas fa-divide"></i></button>
+      </div>
+    </div>
+  </div>
+  <p class="text-center mt-3" id="try-counter">Attempt: 1 of 4</p>
+  <div class="text-center mb-3">
+    <button class="btn btn-danger" id="try-again-button" onclick="tryAgain()">Try Again</button>
+  </div>
+  <br />
+  <p class="text-center text-muted" id="daily-number"></p>
+  <div class="text-center mt-4">
+    <a href="mailto:raj@mathplusacademy.com?subject=Bug Report for Daily 24 Game" class="btn btn-outline-danger">
+      Report a Bug
+    </a>
+  </div>
+  <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="helpModalLabel">How to Play</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>The goal is to use all four numbers shown to make the number 24.</p>
+          <ul>
+            <li>You can use addition, subtraction, multiplication, or division.</li>
+            <li>You must use each number exactly once.</li>
+            <li>Click a card, an operator, and a 2nd card to combine them into one.</li>
+            <li>Try to reach 24 before you run out of tries!</li>
+          </ul>
+          <hr />
+          <h6 class="mb-2">🎥 Watch how it works:</h6>
+          <video autoplay muted loop playsinline style="width: 100%; border-radius: 10px;">
+            <source src="videos/demo.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="endgame-Modal" tabindex="-1" aria-labelledby="endGameModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="endGameModalLabel">Game Over</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p id="game-result-message"></p>
+          <div id="attempts-matrix" class="mt-4"></div>
+          <button class="btn btn-success" id="share-button">Share <i class="fa-solid fa-share-alt"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+<script src="/assets/js/24game.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
