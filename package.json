@@ -6,7 +6,7 @@
   "scripts": {
     "start": "eleventy --serve",
     "build": "eleventy",
-    "build:sass:prod": "sass src/static/scss:public/static/css --style compressed",
+    "build:sass:prod": "sass src/assets/css:public/static/css --style compressed",
     "build:eleventy:prod": "ELEVENTY_ENV=production eleventy",
     "build:prod": "npm run build:eleventy:prod & npm run build:sass:prod"
   },
