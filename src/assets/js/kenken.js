@@ -1,6 +1,9 @@
 const gridSize = 5;
 let currentInput = null; // Track focused input
 let pencilMode = false;
+let currentBoard = [];   // 2D array of { value: string, pencil: [] }
+let undoStack = [];
+
 const cageColors = [
   '#FFB3BA', // pastel red
   '#FFDFBA', // pastel orange
@@ -30,6 +33,10 @@ console.log("Daily solution grid:", solution);
 const cages = generateCages(solution, rand);
 console.log("Generated cages:", cages);
 
+window.addEventListener("DOMContentLoaded", () => {
+  loadGameState();
+});
+
 const kenken = document.getElementById('kenken');
 
 document.getElementById('pencilModeSwitch').addEventListener('change', (e) => {
@@ -53,9 +60,17 @@ document.querySelectorAll('.tile').forEach(button => {
   });
 });
 
+document.getElementById("clear-game").addEventListener("click", () => {
+  if (confirm("Are you sure you want to clear the puzzle and restart?")) {
+    localStorage.removeItem("kenkenGameState");
+    location.reload();
+  }
+});
+
 // Create the grid and input cells
 for (let r = 0; r < gridSize; r++) {
   inputs[r] = [];
+  currentBoard[r] = [];
   for (let c = 0; c < gridSize; c++) {
     const div = document.createElement('div');
     div.classList.add('cell');
@@ -111,13 +126,22 @@ for (let r = 0; r < gridSize; r++) {
 
     div.appendChild(input);
     kenken.appendChild(div);
+
+    // Initialize board state
+    currentBoard[r][c] = { value: "", pencil: [] };
   }
 }
-// handle clicks on number tiles or keydowns
+// Handle clicks on number tiles or number key presses
 const handleInput = (cell, number) => {
+  const row = parseInt(cell.dataset.row);
+  const col = parseInt(cell.dataset.col);
+
   // Don't allow pencil marks if a number is already present
   const input = cell.querySelector('input');
   if (pencilMode && input.value.match(/^[1-5]$/)) return;
+
+  // Save current state for undo
+  undoStack.push(cloneBoardState(currentBoard));
 
   if (pencilMode) {
     // Do NOT update input value
@@ -130,20 +154,28 @@ const handleInput = (cell, number) => {
 
     const existing = markDiv.innerText.split('').filter(n => n !== '');
     if (existing.includes(number)) {
-      markDiv.innerText = existing.filter(n => n !== number).join('');
+      const updated = existing.filter(n => n !== number).join('');
+      markDiv.innerText = updated;
+      currentBoard[row][col].pencil = updated.split('');
     } else {
       existing.push(number);
-      markDiv.innerText = [...new Set(existing)].sort().join('');
+      const updated = [...new Set(existing)].sort().join('');
+      markDiv.innerText = updated;
+      currentBoard[row][col].pencil = updated.split('');
     }
   } else {
     // Normal mode — set input value
     currentInput.value = number;
+    currentBoard[row][col].value = number;
+    currentBoard[row][col].pencil = [];
 
     // Clear pencil marks
     const markDiv = cell.querySelector('.pencil-marks');
     if (markDiv) markDiv.remove();
 
     currentInput.focus();
+
+    saveGameState(); // ✅ Save after change
   }
 };
 
@@ -238,6 +270,7 @@ function generateSeededLatinSquare(n, seedString) {
   return finalGrid;
 }
 
+// Generate cages based on the daily solution
 function generateCages(solution, rand) {
   const size = solution.length;
   const visited = Array.from({ length: size }, () => Array(size).fill(false));
@@ -322,6 +355,7 @@ function generateCages(solution, rand) {
   return cages;
 }
 
+// Check if the puzzle is solved
 function checkPuzzle() {
   let correct = true;
   outer: for (let r = 0; r < gridSize; r++) {
@@ -343,4 +377,60 @@ function checkPuzzle() {
     modalText.innerText = 'Not quite. Keep trying!';
   }
   modal.style.display = 'flex';
+}
+
+// Create a deep clone of the board state for undo functionality
+function cloneBoardState(board) {
+  return board.map(row =>
+    row.map(cell => ({
+      value: cell.value,
+      pencil: [...cell.pencil]
+    }))
+  );
+}
+
+// Save game state to localStorage
+function saveGameState() {
+  const data = {
+    board: currentBoard,
+    undoStack: undoStack,
+    pencilMode: pencilMode,
+    date: new Date().toISOString().slice(0, 10)
+  };
+  localStorage.setItem("kenkenGameState", JSON.stringify(data));
+}
+
+// Load game state from localStorage
+function loadGameState() {
+  const saved = localStorage.getItem("kenkenGameState");
+  if (!saved) return;
+
+  try {
+    const data = JSON.parse(saved);
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (data.date === today) {
+      currentBoard = data.board;
+      undoStack = data.undoStack || [];
+      pencilMode = data.pencilMode ?? false;
+      restoreBoardToDOM();
+    } else {
+      localStorage.removeItem("kenkenGameState");
+    }
+  } catch (e) {
+    console.error("Could not load saved game:", e);
+  }
+}
+
+// Restore the board state to the DOM
+function restoreBoardToDOM() {
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      const val = currentBoard[r][c].value;
+      const pencil = currentBoard[r][c].pencil.join(",");
+      inputs[r][c].value = val || "";
+      inputs[r][c].setAttribute("data-pencil", pencil);
+      // Optional: custom display logic for pencil marks
+    }
+  }
 }
