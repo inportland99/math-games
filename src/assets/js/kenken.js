@@ -3,7 +3,8 @@ let currentInput = null; // Track focused input
 let pencilMode = false;
 let currentBoard = [];   // 2D array of { value: string, pencil: [] }
 let undoStack = [];
-
+let redoStack = [];
+// Define cage colors for visual differentiation
 const cageColors = [
   '#FFB3BA', // pastel red
   '#FFDFBA', // pastel orange
@@ -152,17 +153,21 @@ const handleInput = (cell, number) => {
       cell.appendChild(markDiv);
     }
 
-    const existing = markDiv.innerText.split('').filter(n => n !== '');
+    // Make sure current pencil marks come from board state, not DOM
+    let existing = currentBoard[row][col].pencil || [];
+
     if (existing.includes(number)) {
-      const updated = existing.filter(n => n !== number).join('');
-      markDiv.innerText = updated;
-      currentBoard[row][col].pencil = updated.split('');
+      existing = existing.filter(n => n !== number);
     } else {
       existing.push(number);
-      const updated = [...new Set(existing)].sort().join('');
-      markDiv.innerText = updated;
-      currentBoard[row][col].pencil = updated.split('');
     }
+
+    // Update board state
+    currentBoard[row][col].pencil = [...new Set(existing)].sort();
+
+    // Update visual display
+    markDiv.innerText = currentBoard[row][col].pencil.join('');
+
   } else {
     // Normal mode — set input value
     currentInput.value = number;
@@ -175,8 +180,8 @@ const handleInput = (cell, number) => {
 
     currentInput.focus();
 
-    saveGameState(); // ✅ Save after change
   }
+  saveGameState(); // ✅ Save after change
 };
 
 // Add cage labels and colors
@@ -426,11 +431,23 @@ function loadGameState() {
 function restoreBoardToDOM() {
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
+      const cell = inputs[r][c].parentElement;
       const val = currentBoard[r][c].value;
-      const pencil = currentBoard[r][c].pencil.join(",");
+      const pencil = currentBoard[r][c].pencil;
       inputs[r][c].value = val || "";
-      inputs[r][c].setAttribute("data-pencil", pencil);
-      // Optional: custom display logic for pencil marks
+      console.log(`Restoring cell [${r}, ${c}]: value=${val}, pencil=${pencil}`);
+      // Clear old pencil marks
+      const oldMarkDiv = cell.querySelector('.pencil-marks');
+      if (oldMarkDiv) oldMarkDiv.remove();
+
+      // Restore pencil marks
+      if (pencil.length > 0) {
+        let markDiv = document.createElement('div');
+        markDiv.classList.add('pencil-marks');
+        markDiv.innerText = pencil.join('');
+        console.log(`Restoring pencil marks for cell [${r}, ${c}]: ${pencil.join('')}`);
+        cell.appendChild(markDiv);
+      }
     }
   }
 }

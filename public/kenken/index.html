@@ -50,9 +50,11 @@
 </nav>
 
   <div class="d-flex flex-column align-items-center"">
-    <div id="stopwatch"><i class="fa-solid fa-stopwatch"></i><span id="timer"> 0:00</span></div>
-    <button class="btn btn-warning" onclick="checkPuzzle()">Check Puzzle</button>
-    <button class="btn btn-danger" id="clear-game">Clear Puzzle</button>
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <div id="stopwatch"><i class="fa-solid fa-stopwatch"></i><span id="timer"> 0:00</span></div>
+      <button class="btn btn-warning" onclick="checkPuzzle()">Check Puzzle</button>
+      <button class="btn btn-danger" id="clear-game">Clear Puzzle</button>
+    </div>
     <div id="kenken"></div>
     <div id="tiles">
       <button class="tile" data-number="1">1</button>
