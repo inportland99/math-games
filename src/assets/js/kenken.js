@@ -50,6 +50,9 @@ document.getElementById('pencilModeSwitch').addEventListener('change', (e) => {
   }
 });
 
+document.getElementById("undo-button").addEventListener("click", undoLastMove);
+document.getElementById("redo-button").addEventListener("click", redoLastMove);
+
 document.querySelectorAll('.tile').forEach(button => {
   button.addEventListener('click', () => {
     if (!currentInput) return;
@@ -113,6 +116,19 @@ for (let r = 0; r < gridSize; r++) {
           e.preventDefault();
           if (col < gridSize - 1) inputs[row][col + 1].focus();
           break;
+        case 'Backspace':
+          e.preventDefault();
+          if (!currentInput) break;
+
+          if (pencilMode) {
+            const pencilMarksDiv = currentInput.parentElement.querySelector('.pencil-marks');
+            if (pencilMarksDiv) {
+              pencilMarksDiv.innerHTML = ''; // Clear all pencil marks
+            }
+          } else {
+            currentInput.value = ''; // Clear main value
+          }
+          break;
 
         default:
           if (!["1", "2", "3", "4", "5", "Backspace", "Tab"].includes(e.key)) {
@@ -132,6 +148,7 @@ for (let r = 0; r < gridSize; r++) {
     currentBoard[r][c] = { value: "", pencil: [] };
   }
 }
+
 // Handle clicks on number tiles or number key presses
 const handleInput = (cell, number) => {
   const row = parseInt(cell.dataset.row);
@@ -141,8 +158,9 @@ const handleInput = (cell, number) => {
   const input = cell.querySelector('input');
   if (pencilMode && input.value.match(/^[1-5]$/)) return;
 
-  // Save current state for undo
+  // Add current state to undoStack and reset redoStack
   undoStack.push(cloneBoardState(currentBoard));
+  redoStack = [];
 
   if (pencilMode) {
     // Do NOT update input value
@@ -200,6 +218,18 @@ cages.forEach((cage, index) => {
     cageCell.style.backgroundColor = color;
   });
 });
+
+// Handle clicks on the grid to focus inputs
+document.getElementById('kenken').addEventListener('click', (e) => {
+  const clicked = e.target;
+
+  if (clicked.classList.contains('pencil-marks') || clicked.classList.contains('cage-label')) {
+    const cell = clicked.closest('.cell');
+    const input = cell?.querySelector('input');
+    if (input) input.focus();
+  }
+});
+
 
 // Timer setup
 let timerInterval;
@@ -325,8 +355,7 @@ function generateCages(solution, rand) {
       const cage = [[r, c]];
       visited[r][c] = true;
 
-      // const cageSize = 1 + Math.floor(rand() * 3); // cage size: 1 to 3
-      const weights = [0.45, 0.45, 0.10]; // For sizes 2, 3, 4
+      const weights = [0.6, 0.3, 0.1]; // For sizes 2, 3, 4
       const randomVal = rand();
       let cageSize;
       if (randomVal < weights[0]) cageSize = 2;
@@ -384,6 +413,31 @@ function checkPuzzle() {
   modal.style.display = 'flex';
 }
 
+// End game function copied from 24game
+function endGame(didWin) {
+  myModal = new bootstrap.Modal(document.getElementById('endgame-Modal'));
+  myModal.show();
+  const message = document.getElementById("game-result-message");
+  message.textContent = didWin ? "🎉 Problem Solved! 🎉" : "I tried! 😞";
+  showAttemptsMatrix(); // This function creates emoji grid text
+  document.getElementById("share-button").addEventListener("click", () => {
+    const modalBody = document.querySelector('#endgame-Modal .modal-body');
+    let originalText = modalBody.innerText;
+    // Remove the word "Share"
+    originalText = originalText.replace(/\bShare\b\s*/g, '').trim();
+    // Define title and link (in plain-text form for max compatibility)
+    const titleWithLink = "https://games.mathplusacademy.com/24game/";
+    // Build plain-text output
+    const plainText = `MPA's Daily 24 Challenge\n${originalText}\n\n${titleWithLink}`;
+    navigator.clipboard.writeText(plainText).then(() => {
+      alert("Copied to clipboard!");
+    }).catch(err => {
+      console.error("Clipboard copy failed:", err);
+      alert("Failed to copy to clipboard.");
+    });
+  });
+}
+
 // Create a deep clone of the board state for undo functionality
 function cloneBoardState(board) {
   return board.map(row =>
@@ -398,7 +452,6 @@ function cloneBoardState(board) {
 function saveGameState() {
   const data = {
     board: currentBoard,
-    undoStack: undoStack,
     pencilMode: pencilMode,
     date: new Date().toISOString().slice(0, 10)
   };
@@ -416,7 +469,6 @@ function loadGameState() {
 
     if (data.date === today) {
       currentBoard = data.board;
-      undoStack = data.undoStack || [];
       pencilMode = data.pencilMode ?? false;
       restoreBoardToDOM();
     } else {
@@ -451,3 +503,36 @@ function restoreBoardToDOM() {
     }
   }
 }
+
+// Undo functionality
+function undoLastMove() {
+  if (undoStack.length === 0) return;
+  redoStack.push(cloneBoardState(currentBoard));
+  currentBoard = undoStack.pop();
+  restoreBoardToDOM();
+  saveGameState(); // Keep localStorage updated
+}
+
+// Redo functionality
+function redoLastMove() {
+  if (redoStack.length === 0) return;
+  undoStack.push(cloneBoardState(currentBoard));
+  currentBoard = redoStack.pop();
+  restoreBoardToDOM();
+  saveGameState(); // Keep localStorage updated
+}
+
+
+// FEATURES LEFT TO IMPLEMENT
+// Fix erasers so they udpate the board state not just the DOM
+// Add a Share button and modal
+// Save solution and don't allow replay after completion
+// Check for more than one solution and change the cages accordingly
+// Save timer to localStorage and restore on load
+// Restart timer if check puzzle fails (on closing the check modal)
+// Don't load yesterdays game today
+// DONE - Put instructions in help modal
+// DONE - Create a component that adds modals programmatically (see tutorial)
+// DONE - Delete key should erase the number or pencil marks
+// DONE - Undo/Redo functionality
+// DONE - Make clue and pencil marks clickable to change input

@@ -77,3 +77,8 @@
     .custom-switch input:checked + .slider::before {
       transform: translateX(24px);
     }
+
+    .cage-label,
+    .pencil-marks {
+      cursor: default;
+    }
