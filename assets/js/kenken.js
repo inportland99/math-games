@@ -4,6 +4,11 @@ let pencilMode = false;
 let currentBoard = [];   // 2D array of { value: string, pencil: [] }
 let undoStack = [];
 let redoStack = [];
+const d = new Date()
+const inputs = [];
+let today = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+const rand = mulberry32(today);
+
 // Define cage colors for visual differentiation
 const cageColors = [
   '#FFB3BA', // pastel red
@@ -21,10 +26,6 @@ const cageColors = [
   '#AFCBFF', // baby blue
   '#E2F0CB'  // pastel lime
 ];
-const d = new Date()
-const inputs = [];
-let today = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-const rand = mulberry32(today);
 
 // Generate a seeded Latin square for the current date
 const solution = generateSeededLatinSquare(gridSize, today);
@@ -121,15 +122,14 @@ for (let r = 0; r < gridSize; r++) {
           if (!currentInput) break;
 
           if (pencilMode) {
-            const pencilMarksDiv = currentInput.parentElement.querySelector('.pencil-marks');
-            if (pencilMarksDiv) {
-              pencilMarksDiv.innerHTML = ''; // Clear all pencil marks
-            }
+            currentInput.parentElement.querySelector('.pencil-marks').innerHTML = ''; // Clear pencil marks
+            currentBoard[row][col].pencil = []; // Clear pencil marks in board state
           } else {
-            currentInput.value = ''; // Clear main value
+            currentInput.value = ''; // Clear main value                currentBoard[row][col].pencil = [];
+            currentBoard[row][col].value = ''; // Clear main value in board state
           }
+          saveGameState(); // ✅ Save after change
           break;
-
         default:
           if (!["1", "2", "3", "4", "5", "Backspace", "Tab"].includes(e.key)) {
             e.preventDefault();
@@ -142,6 +142,9 @@ for (let r = 0; r < gridSize; r++) {
     });
 
     div.appendChild(input);
+    const pencilMarks = document.createElement('div');
+    pencilMarks.classList.add('pencil-marks');
+    div.appendChild(pencilMarks);
     kenken.appendChild(div);
 
     // Initialize board state
@@ -149,7 +152,7 @@ for (let r = 0; r < gridSize; r++) {
   }
 }
 
-// Handle clicks on number tiles or number key presses
+// Handle clicks on number tiles including eraser or number key presses
 const handleInput = (cell, number) => {
   const row = parseInt(cell.dataset.row);
   const col = parseInt(cell.dataset.col);
@@ -163,28 +166,24 @@ const handleInput = (cell, number) => {
   redoStack = [];
 
   if (pencilMode) {
-    // Do NOT update input value
-    let markDiv = cell.querySelector('.pencil-marks');
-    if (!markDiv) {
-      markDiv = document.createElement('div');
-      markDiv.classList.add('pencil-marks');
-      cell.appendChild(markDiv);
-    }
-
-    // Make sure current pencil marks come from board state, not DOM
-    let existing = currentBoard[row][col].pencil || [];
-
-    if (existing.includes(number)) {
-      existing = existing.filter(n => n !== number);
+    if (number == "") {
+      currentBoard[row][col].pencil = []; // Clear pencil marks in board state
     } else {
-      existing.push(number);
-    }
+      // Make sure current pencil marks come from board state, not DOM
+      let existing = currentBoard[row][col].pencil || [];
 
-    // Update board state
-    currentBoard[row][col].pencil = [...new Set(existing)].sort();
+      if (existing.includes(number)) {
+        existing = existing.filter(n => n !== number);
+      } else {
+        existing.push(number);
+      }
+
+      // Update board state
+      currentBoard[row][col].pencil = [...new Set(existing)].sort();
+    }
 
     // Update visual display
-    markDiv.innerText = currentBoard[row][col].pencil.join('');
+    cell.querySelector('.pencil-marks').innerText = currentBoard[row][col].pencil.join('');
 
   } else {
     // Normal mode — set input value
@@ -193,8 +192,7 @@ const handleInput = (cell, number) => {
     currentBoard[row][col].pencil = [];
 
     // Clear pencil marks
-    const markDiv = cell.querySelector('.pencil-marks');
-    if (markDiv) markDiv.remove();
+    cell.querySelector('.pencil-marks').innerHTML = '';
 
     currentInput.focus();
 
@@ -211,6 +209,10 @@ cages.forEach((cage, index) => {
   const label = document.createElement('div');
   label.classList.add('cage-label');
   label.innerText = cage.label;
+  // Regex: number(s) followed by operator
+  label.innerHTML = cage.label.replace(/(\d+)([+\-×÷*/])/, 
+    (match, num, op) => `${num} <span class="cage-op">${op}</span>`
+  );
   cell.appendChild(label);
 
   cage.cells.forEach(([r, c]) => {
@@ -238,7 +240,7 @@ timerInterval = setInterval(() => {
   const elapsed = Math.floor((Date.now() - startTime) / 1000);
   const minutes = Math.floor(elapsed / 60);
   const seconds = elapsed % 60;
-  const paddedSeconds = seconds.toString().padStart(2, '0'); // ensures 0–9 become "00"–"09"
+  const paddedSeconds = seconds.toString().padStart(2, '0');
   document.getElementById('timer').innerText = ` ${minutes}:${paddedSeconds}`;
 }, 1000);
 
@@ -391,26 +393,102 @@ function generateCages(solution, rand) {
 
 // Check if the puzzle is solved
 function checkPuzzle() {
-  let correct = true;
-  outer: for (let r = 0; r < gridSize; r++) {
+  // Check for duplicate digits in any row or column
+  for (let r = 0; r < gridSize; r++) {
+    const seenRow = new Set();
+    const seenCol = new Set();
     for (let c = 0; c < gridSize; c++) {
-      const input = document.querySelector(`[data-row='${r}'][data-col='${c}'] input`).value;
-      if (parseInt(input) !== solution[r][c]) {
-        correct = false;
-        break outer;
+      const rowVal = document.querySelector(`[data-row='${r}'][data-col='${c}'] input`).value;
+      const colVal = document.querySelector(`[data-row='${c}'][data-col='${r}'] input`).value;
+      if (rowVal) {
+        if (seenRow.has(rowVal)) return { status: false, reason: "duplicate_in_row", row: r, value: rowVal };
+        seenRow.add(rowVal);
+      }
+      if (colVal) {
+        if (seenCol.has(colVal)) return { status: false, reason: "duplicate_in_col", col: r, value: colVal };
+        seenCol.add(colVal);
       }
     }
   }
-  clearInterval(timerInterval);
-  const modal = document.getElementById('modal');
-  const modalText = document.getElementById('modalText');
-  if (correct) {
-    confetti();
-    modalText.innerText = 'Congratulations! You solved it!';
-  } else {
-    modalText.innerText = 'Not quite. Keep trying!';
+
+  // Check for completed cages that do not match their target
+  for (const cage of cages) {
+    const values = cage.cells.map(([r, c]) =>
+      document.querySelector(`[data-row='${r}'][data-col='${c}'] input`).value
+    );
+    if (values.every(v => v)) {
+      // Parse the cage label and check if the values match the target
+      const nums = values.map(Number);
+      const label = cage.label;
+      let valid = false;
+      if (/^\d+$/.test(label)) {
+        valid = nums[0] === Number(label);
+      } else if (label.endsWith('+')) {
+        const sum = nums.reduce((a, b) => a + b, 0);
+        valid = sum === Number(label.slice(0, -1));
+      } else if (label.endsWith('x')) {
+        const prod = nums.reduce((a, b) => a * b, 1);
+        valid = prod === Number(label.slice(0, -1));
+      } else if (label.endsWith('-')) {
+        const diff = Math.abs(nums[0] - nums[1]);
+        valid = diff === Number(label.slice(0, -1));
+      } else if (label.endsWith('÷') || label.endsWith('÷')) {
+        const div = nums[0] > nums[1] ? nums[0] / nums[1] : nums[1] / nums[0];
+        valid = div === Number(label.slice(0, -1));
+      }
+      if (!valid) {
+        return { status: false, reason: "cage_mismatch", cage, values: nums, label };
+      }
+    }
   }
-  modal.style.display = 'flex';
+  // Check if the entire grid matches the solution
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      const inputVal = document.querySelector(`[data-row='${r}'][data-col='${c}'] input`).value;
+      if (parseInt(inputVal) !== solution[r][c]) {
+        return { status: false, reason: "not_matching_solution", row: r, col: c, value: inputVal, expected: solution[r][c] };
+      }
+    }
+  }
+  // If all checks pass and puzzle matches solutions, return success
+  return { status: true };
+}
+
+function showCheckModal() {
+  const result = checkPuzzle();
+  const modal = document.getElementById('checkPuzzleModal');
+  const modalBody = modal.querySelector('.modal-body');
+  switch (result.status) {
+    case true:
+      confetti();
+      clearInterval(timerInterval);
+      modalBody.innerHTML = `🎉 Problem Solved! 🎉 <br />You solved today's puzzle in ${document.getElementById('timer').innerText.trim()}!`;
+      // Save the game state to prevent replay
+      // Make the winning time shareable with link back to the game
+      break;
+    case false:
+      switch (result.reason) {
+        case "duplicate_in_row":
+          modalBody.innerHTML = `Duplicate number <b>${result.value}</b> found in row ${result.row + 1}.`;
+          break;
+        case "duplicate_in_col":
+          modalBody.innerHTML = `Duplicate number <b>${result.value}</b> found in column ${result.col + 1}.`;
+          break;
+        case "cage_mismatch":
+          modalBody.innerHTML = `Cage clue <b>${result.label}</b> does not match your entries (${result.values.join(", ")}).`;
+          break;
+        case "not_matching_solution":
+          modalBody.innerHTML = `Cell (${result.row + 1}, ${result.col + 1}) should be <b>${result.expected}</b>, but you entered <b>${result.value || "nothing"}</b>.`;
+          break;
+        default:
+          modalBody.innerHTML = 'Not quite. Keep trying!';
+      }
+      break;
+    default:
+      modalBody.innerHTML = 'Not quite. Keep trying!';
+  }
+  const bsModal = new bootstrap.Modal(modal);
+  bsModal.show();
 }
 
 // End game function copied from 24game
@@ -450,9 +528,11 @@ function cloneBoardState(board) {
 
 // Save game state to localStorage
 function saveGameState() {
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
   const data = {
     board: currentBoard,
     pencilMode: pencilMode,
+    elapsed: elapsed,
     date: new Date().toISOString().slice(0, 10)
   };
   localStorage.setItem("kenkenGameState", JSON.stringify(data));
@@ -470,7 +550,10 @@ function loadGameState() {
     if (data.date === today) {
       currentBoard = data.board;
       pencilMode = data.pencilMode ?? false;
-      restoreBoardToDOM();
+      if (data.date === today) {
+        restoreBoardToDOM();
+      }
+      startTime = Date.now() - data.elapsed * 1000;
     } else {
       localStorage.removeItem("kenkenGameState");
     }
@@ -486,20 +569,11 @@ function restoreBoardToDOM() {
       const cell = inputs[r][c].parentElement;
       const val = currentBoard[r][c].value;
       const pencil = currentBoard[r][c].pencil;
+      // Restore cell value
       inputs[r][c].value = val || "";
-      console.log(`Restoring cell [${r}, ${c}]: value=${val}, pencil=${pencil}`);
-      // Clear old pencil marks
-      const oldMarkDiv = cell.querySelector('.pencil-marks');
-      if (oldMarkDiv) oldMarkDiv.remove();
-
-      // Restore pencil marks
-      if (pencil.length > 0) {
-        let markDiv = document.createElement('div');
-        markDiv.classList.add('pencil-marks');
-        markDiv.innerText = pencil.join('');
-        console.log(`Restoring pencil marks for cell [${r}, ${c}]: ${pencil.join('')}`);
-        cell.appendChild(markDiv);
-      }
+      // console.log(`Restoring cell [${r}, ${c}]: value=${val}, pencil=${pencil}`);
+      cell.querySelector('.pencil-marks').innerHTML = pencil.join('') || "";
+      // console.log(`Restoring pencil marks for cell [${r}, ${c}]: ${pencil.join('')}`);
     }
   }
 }
@@ -524,13 +598,15 @@ function redoLastMove() {
 
 
 // FEATURES LEFT TO IMPLEMENT
-// Fix erasers so they udpate the board state not just the DOM
-// Add a Share button and modal
 // Save solution and don't allow replay after completion
+// Add a Share button to checkPuzzle modal
+// Consider refactor to add a start modal, save starttime to storage and restore timer on reloads based on starttime
 // Check for more than one solution and change the cages accordingly
-// Save timer to localStorage and restore on load
-// Restart timer if check puzzle fails (on closing the check modal)
-// Don't load yesterdays game today
+// DONE - Don't load yesterdays game today
+// DONE - Save timer to localStorage and restore on load
+// DONE - Restart timer if check puzzle fails (on closing the check modal)
+// DONE - Add commentary to the checkPuzzle modal - check row/col integrity, check cage integrity keep going.
+// DONE - Fix erasers so they udpate the board state not just the DOM
 // DONE - Put instructions in help modal
 // DONE - Create a component that adds modals programmatically (see tutorial)
 // DONE - Delete key should erase the number or pencil marks

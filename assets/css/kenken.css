@@ -2,7 +2,10 @@
     .cell { border: 1px solid white; border-radius: 8px;text-align: center; font-size: 30px; background: white; position: relative; box-sizing: border-box; }
     .cell input { width: 100%; height: 100%; border: none; text-align: center; font-size: 30px; font-weight: 700; background: transparent; }
     .cage-label { position: absolute; top: 2px; left: 4px; font-size: 12px; font-weight:500; color: #555; }
-    .tile { width: 50px; height: 50px; border-radius: 8px;  border: 1px solid gray; display: inline-flex; justify-content: center; align-items: center; font-size: 30px; font-weight: 900; background-color: white; cursor: pointer; }
+    .cage-op {
+      font-size: 1.3em;
+    }
+  .tile { width: 50px; height: 50px; border-radius: 8px;  border: 1px solid gray; display: inline-flex; justify-content: center; align-items: center; font-size: 30px; font-weight: 900; background-color: white; cursor: pointer; }
     #tiles { margin: 10px; }
     #stopwatch { margin: 10px; font-weight: bold; font-size: 24px}
     #modal {
