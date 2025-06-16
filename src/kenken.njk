@@ -7,7 +7,7 @@ pageCss: "/assets/css/kenken.css"
 <div class="d-flex flex-column align-items-center">
   <div class="d-flex align-items-center gap-2 mb-3">
     <div id="stopwatch"><i class="fa-solid fa-stopwatch"></i><span id="timer"> 0:00</span></div>
-    <button class="btn btn-success" onclick="checkPuzzle()">Check Puzzle</button>
+    <button class="btn btn-success" onclick="showCheckModal()">Check Puzzle</button>
   </div>
   <div id="kenken"></div>
   <div class="mb-3" id="tiles">
@@ -41,13 +41,18 @@ pageCss: "/assets/css/kenken.css"
     id="help",
     title="How to Play", 
     body="
-      Fill in each cell with a number from 1 to 5.<br>
-      Every row and every column must contain each number exactly once.<br>
-      The colored regions have a target number and an operation (+, -, x, or ÷).<br>
-      The numbers in each colored region must combine to match the target number using the operation.<br>
-      Use the number tiles below the grid or the keyboard to fill in the grid.<br>
-      You can use pencil mode to mark potential numbers.<br>
-      <img src='/assets/images/kenken_sample_game.png' class='img-fluid'>"
-   %}
+      <ol>
+        <li>Fill in each cell with a number from 1 to 5
+        <li>Every row and column contains each number exactly once
+        <li>The cells in a colored region combine to make the target value using given operation (+, -, x, or ÷)
+        <br>Note: Numbers is a colored region may occur more than once as long as they don't violate rule #2
+      </ol>
+      Use the number tiles below the puzzle or keyboard to enter numbers into the grid. You may use pencil mode (<i class='fa-solid fa-pencil' style='color:gray'></i>) to mark potential numbers in a cell<br>
+      <img src='/assets/images/kenken_sample_game.png' class='img-fluid w-50 d-block mx-auto' alt='Sample KenKen Game'>"
+  %}
+  {% Modal 
+    id="checkPuzzle",
+    title="Results" 
+  %}
 </div>
 <script src="/assets/js/kenken.js"></script>
