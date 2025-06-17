@@ -7,7 +7,7 @@ pageCss: "/assets/css/kenken.css"
 <div class="d-flex flex-column align-items-center">
   <div class="d-flex align-items-center gap-2 mb-3">
     <div id="stopwatch"><i class="fa-solid fa-stopwatch"></i><span id="timer"> 0:00</span></div>
-    <button class="btn btn-success" onclick="showCheckModal()">Check Puzzle</button>
+    <button class="btn btn-success" id='checkPuzzle' onclick="showCheckModal()">Check Puzzle</button>
   </div>
   <div id="kenken"></div>
   <div class="mb-3" id="tiles">
@@ -31,11 +31,12 @@ pageCss: "/assets/css/kenken.css"
     <button class="btn btn-outline-secondary" id="redo-button"><i class="fa-solid fa-rotate-right"></i></button>
     <button class="btn btn-danger" id="clear-game">Reset Puzzle</button>
   </div>
-  <div id="modal">
-    <div id="modalContent">
-      <p id="modalText">Not quite. Keep trying!</p>
-      <button onclick="document.getElementById('modal').style.display='none'">Close</button>
-    </div>
+  <hr>
+  <p class="text-center text-muted" id="daily-number"></p>
+  <div class="text-center">
+    <a href="mailto:raj@mathplusacademy.com?subject=Bug Report for Daily 24 Game" class="btn btn-outline-danger">
+      Report a Bug
+    </a>
   </div>
   {% Modal 
     id="help",
@@ -48,11 +49,12 @@ pageCss: "/assets/css/kenken.css"
         <br>Note: Numbers is a colored region may occur more than once as long as they don't violate rule #2
       </ol>
       Use the number tiles below the puzzle or keyboard to enter numbers into the grid. You may use pencil mode (<i class='fa-solid fa-pencil' style='color:gray'></i>) to mark potential numbers in a cell<br>
+      Use the Check Puzzle button to verify your solution. If you get stuck, you can reset the puzzle using the Reset Puzzle button.<br>
       <img src='/assets/images/kenken_sample_game.png' class='img-fluid w-50 d-block mx-auto' alt='Sample KenKen Game'>"
   %}
   {% Modal 
     id="checkPuzzle",
-    title="Results" 
+    title="Check Puzzle" 
   %}
 </div>
 <script src="/assets/js/kenken.js"></script>

@@ -8,6 +8,7 @@ const d = new Date()
 const inputs = [];
 let today = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 const rand = mulberry32(today);
+let solved = false;
 
 // Define cage colors for visual differentiation
 const cageColors = [
@@ -26,6 +27,11 @@ const cageColors = [
   '#AFCBFF', // baby blue
   '#E2F0CB'  // pastel lime
 ];
+
+window.onload = function() {
+  const d = new Date();
+  document.getElementById("daily-number").textContent = `🗓️ Daily Game: ${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
 
 // Generate a seeded Latin square for the current date
 const solution = generateSeededLatinSquare(gridSize, today);
@@ -391,7 +397,7 @@ function generateCages(solution, rand) {
   return cages;
 }
 
-// Check if the puzzle is solved
+// Check the puzzle for errors and validate the solution
 function checkPuzzle() {
   // Check for duplicate digits in any row or column
   for (let r = 0; r < gridSize; r++) {
@@ -460,25 +466,45 @@ function showCheckModal() {
   const modalBody = modal.querySelector('.modal-body');
   switch (result.status) {
     case true:
+      solved = true;
+      saveGameState(); // Save the solved state
       confetti();
       clearInterval(timerInterval);
       modalBody.innerHTML = `🎉 Problem Solved! 🎉 <br />You solved today's puzzle in ${document.getElementById('timer').innerText.trim()}!`;
       // Save the game state to prevent replay
-      // Make the winning time shareable with link back to the game
+      modalBody.innerHTML += `
+        <br><button id="share-kenken-button" class="btn btn-success mt-3">
+          <i class="bi bi-share"></i> Share
+        </button>
+      `;
+      setTimeout(() => {
+        const shareBtn = document.getElementById('share-kenken-button');
+        if (shareBtn) {
+          shareBtn.addEventListener('click', () => {
+            const shareText = `MPA's Daily KenKen Challenge<br>I solved it in ${document.getElementById('timer').innerText.trim()}! https://games.mathplusacademy.com/kenken/`;
+            navigator.clipboard.writeText(shareText).then(() => {
+              shareBtn.innerText = "Copied!";
+              setTimeout(() => shareBtn.innerHTML = `Share <i class="fa-solid fa-share-nodes"></i>`, 1500);
+            });
+          });
+        }
+        disableImputs(); // Disable inputs to prevent further changes
+      }, 0);
       break;
     case false:
       switch (result.reason) {
         case "duplicate_in_row":
-          modalBody.innerHTML = `Duplicate number <b>${result.value}</b> found in row ${result.row + 1}.`;
+          // modalBody.innerHTML = `Duplicate number <b>${result.value}</b> found in row ${result.row + 1}.`;
+          modalBody.innerHTML = `Check for a duplicate number in one of the rows.`;
           break;
         case "duplicate_in_col":
-          modalBody.innerHTML = `Duplicate number <b>${result.value}</b> found in column ${result.col + 1}.`;
+          modalBody.innerHTML = `Check for a duplicate number in one of the columns.`;
           break;
         case "cage_mismatch":
-          modalBody.innerHTML = `Cage clue <b>${result.label}</b> does not match your entries (${result.values.join(", ")}).`;
+          modalBody.innerHTML = `Check your cages to make sure they match the target value.`;
           break;
         case "not_matching_solution":
-          modalBody.innerHTML = `Cell (${result.row + 1}, ${result.col + 1}) should be <b>${result.expected}</b>, but you entered <b>${result.value || "nothing"}</b>.`;
+          modalBody.innerHTML = `No duplicates or cage errors found yet... Keep going!`;
           break;
         default:
           modalBody.innerHTML = 'Not quite. Keep trying!';
@@ -489,31 +515,6 @@ function showCheckModal() {
   }
   const bsModal = new bootstrap.Modal(modal);
   bsModal.show();
-}
-
-// End game function copied from 24game
-function endGame(didWin) {
-  myModal = new bootstrap.Modal(document.getElementById('endgame-Modal'));
-  myModal.show();
-  const message = document.getElementById("game-result-message");
-  message.textContent = didWin ? "🎉 Problem Solved! 🎉" : "I tried! 😞";
-  showAttemptsMatrix(); // This function creates emoji grid text
-  document.getElementById("share-button").addEventListener("click", () => {
-    const modalBody = document.querySelector('#endgame-Modal .modal-body');
-    let originalText = modalBody.innerText;
-    // Remove the word "Share"
-    originalText = originalText.replace(/\bShare\b\s*/g, '').trim();
-    // Define title and link (in plain-text form for max compatibility)
-    const titleWithLink = "https://games.mathplusacademy.com/24game/";
-    // Build plain-text output
-    const plainText = `MPA's Daily 24 Challenge\n${originalText}\n\n${titleWithLink}`;
-    navigator.clipboard.writeText(plainText).then(() => {
-      alert("Copied to clipboard!");
-    }).catch(err => {
-      console.error("Clipboard copy failed:", err);
-      alert("Failed to copy to clipboard.");
-    });
-  });
 }
 
 // Create a deep clone of the board state for undo functionality
@@ -533,6 +534,7 @@ function saveGameState() {
     board: currentBoard,
     pencilMode: pencilMode,
     elapsed: elapsed,
+    solved: solved,
     date: new Date().toISOString().slice(0, 10)
   };
   localStorage.setItem("kenkenGameState", JSON.stringify(data));
@@ -550,6 +552,7 @@ function loadGameState() {
     if (data.date === today) {
       currentBoard = data.board;
       pencilMode = data.pencilMode ?? false;
+      solved = data.solved;
       if (data.date === today) {
         restoreBoardToDOM();
       }
@@ -576,6 +579,7 @@ function restoreBoardToDOM() {
       // console.log(`Restoring pencil marks for cell [${r}, ${c}]: ${pencil.join('')}`);
     }
   }
+  if (solved) disableImputs();
 }
 
 // Undo functionality
@@ -596,12 +600,22 @@ function redoLastMove() {
   saveGameState(); // Keep localStorage updated
 }
 
+// Disable inputs and change the check puzzle button to share after solving
+function disableImputs(){
+  document.querySelectorAll('.cell').forEach(cell => {
+    cell.classList.add('disabled-cell');
+  });
+  // change check puzzle to share button
+  document.getElementById('checkPuzzle').innerHTML = `Share <i class="fa-solid fa-share-nodes"></i>`;
+  // disable reset puzzle button
+  document.getElementById('clear-game').disabled = true;
+}
 
 // FEATURES LEFT TO IMPLEMENT
-// Save solution and don't allow replay after completion
-// Add a Share button to checkPuzzle modal
 // Consider refactor to add a start modal, save starttime to storage and restore timer on reloads based on starttime
 // Check for more than one solution and change the cages accordingly
+// DONE - Don't allow replay after completion
+// DONE - Add a Share button to checkPuzzle modal
 // DONE - Don't load yesterdays game today
 // DONE - Save timer to localStorage and restore on load
 // DONE - Restart timer if check puzzle fails (on closing the check modal)
