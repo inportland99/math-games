@@ -29,7 +29,8 @@ pageCss: "/assets/css/kenken.css"
     </div>
     <button class="btn btn-outline-secondary" id="undo-button"><i class="fa-solid fa-rotate-left"></i></button>
     <button class="btn btn-outline-secondary" id="redo-button"><i class="fa-solid fa-rotate-right"></i></button>
-    <button class="btn btn-danger" id="clear-game">Reset Puzzle</button>
+    <button id="pauseBtn" class="btn btn-outline-secondary"><i class="fa-solid fa-pause"></i></button>
+    <button class="btn btn-danger" id="clear-game">Reset</button>
   </div>
   <hr>
   <p class="text-center text-muted" id="daily-number"></p>
@@ -56,5 +57,30 @@ pageCss: "/assets/css/kenken.css"
     id="checkPuzzle",
     title="Check Puzzle" 
   %}
+  {% Modal 
+    id="welcome",
+    title="Welcome!", 
+    body="
+      <ol>
+        <li>Fill in each cell with a number from 1 to 5
+        <li>Every row and column contains each number exactly once
+        <li>The cells in a colored region combine to make the target value using given operation (+, -, x, or ÷)
+        <br>Note: Numbers is a colored region may occur more than once as long as they don't violate rule #2
+      </ol>
+      Use the number tiles below the puzzle or keyboard to enter numbers into the grid. You may use pencil mode (<i class='fa-solid fa-pencil' style='color:gray'></i>) to mark potential numbers in a cell<br>
+      Use the Check Puzzle button to verify your solution. If you get stuck, you can reset the puzzle using the Reset Puzzle button.<br>
+      <img src='/assets/images/kenken_sample_game.png' class='img-fluid w-50 d-block mx-auto' alt='Sample KenKen Game'>
+      <button id='startButton' class='btn btn-success'>Start</button>
+      "
+  %}
+  {% Modal 
+    id="paused",
+    title="Game Paused", 
+    body="
+      The game is paused.
+      <button id='resumeButton' class='btn btn-warning'>Start</button>
+      "
+  %}
+
 </div>
 <script src="/assets/js/kenken.js"></script>

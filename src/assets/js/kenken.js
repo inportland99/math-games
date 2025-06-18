@@ -611,9 +611,11 @@ function disableImputs(){
   document.getElementById('clear-game').disabled = true;
 }
 
-// FEATURES LEFT TO IMPLEMENT
-// Consider refactor to add a start modal, save starttime to storage and restore timer on reloads based on starttime
+// ADDITIONAL FEATURES
+// Make the timer only run when the window is focused and pause it when not focused
+// Create a start modal that allows the user to start a new game or continue an existing one
 // Check for more than one solution and change the cages accordingly
+// Copy this into a 4x4 version
 // DONE - Don't allow replay after completion
 // DONE - Add a Share button to checkPuzzle modal
 // DONE - Don't load yesterdays game today
