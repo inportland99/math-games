@@ -9,6 +9,11 @@ const inputs = [];
 let today = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 const rand = mulberry32(today);
 let solved = false;
+// Timer setup
+let timerInterval;
+let startTime;
+let elapsed = 0;
+let isPaused = false;
 
 // Define cage colors for visual differentiation
 const cageColors = [
@@ -35,14 +40,19 @@ window.onload = function() {
 
 // Show intro modal on page load
 window.addEventListener('DOMContentLoaded', () => {
+  loadGameState();
+  startTimer();
   const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
-  welcomeModal.show();
 
+  if (elapsed == 0) {
+    welcomeModal.show();
+    pauseTimer(); // Pause the timer until the user starts
+  }
   // Automatically start the timer when the modal is closed
   const welcomeModalEl = document.getElementById('welcomeModal');
   if (welcomeModalEl) {
     welcomeModalEl.addEventListener('hidden.bs.modal', () => {
-      startTimer();
+      resumeTimer();
     });
   }
 
@@ -53,7 +63,6 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  
   document.getElementById('startButton').onclick = () => {
     welcomeModal.hide();
     startTimer();
@@ -80,10 +89,6 @@ console.log("Daily solution grid:", solution);
 // Generate cages based on the solution
 const cages = generateCages(solution, rand);
 console.log("Generated cages:", cages);
-
-window.addEventListener("DOMContentLoaded", () => {
-  loadGameState();
-});
 
 const kenken = document.getElementById('kenken');
 
@@ -279,11 +284,6 @@ document.getElementById('kenken').addEventListener('click', (e) => {
 });
 
 
-// Timer setup
-let timerInterval;
-let startTime;
-let elapsed = 0;
-let isPaused = false;
 
 // Timer functions
 function startTimer() {
@@ -298,6 +298,7 @@ function updateTimer() {
     const minutes = Math.floor(elapsed / 60);
     const seconds = elapsed % 60;
     document.getElementById('timer').innerText = ` ${minutes}:${seconds.toString().padStart(2, '0')}`;
+    saveGameState();
   }
 }
 
@@ -632,7 +633,7 @@ function loadGameState() {
       if (data.date === today) {
         restoreBoardToDOM();
       }
-      startTime = Date.now() - data.elapsed * 1000;
+      elapsed = data.elapsed || 0;
     } else {
       localStorage.removeItem("kenkenGameState");
     }
@@ -648,11 +649,9 @@ function restoreBoardToDOM() {
       const cell = inputs[r][c].parentElement;
       const val = currentBoard[r][c].value;
       const pencil = currentBoard[r][c].pencil;
-      // Restore cell value
       inputs[r][c].value = val || "";
-      // console.log(`Restoring cell [${r}, ${c}]: value=${val}, pencil=${pencil}`);
       cell.querySelector('.pencil-marks').innerHTML = pencil.join('') || "";
-      // console.log(`Restoring pencil marks for cell [${r}, ${c}]: ${pencil.join('')}`);
+      document.getElementById('timer').innerText = ` ${Math.floor(elapsed / 60)}:${(elapsed % 60).toString().padStart(2, '0')}`;
     }
   }
   if (solved) disableImputs();
