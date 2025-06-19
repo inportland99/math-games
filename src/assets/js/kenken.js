@@ -33,6 +33,46 @@ window.onload = function() {
   document.getElementById("daily-number").textContent = `🗓️ Daily Game: ${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }
 
+// Show intro modal on page load
+window.addEventListener('DOMContentLoaded', () => {
+  const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
+  welcomeModal.show();
+
+  // Automatically start the timer when the modal is closed
+  const welcomeModalEl = document.getElementById('welcomeModal');
+  if (welcomeModalEl) {
+    welcomeModalEl.addEventListener('hidden.bs.modal', () => {
+      startTimer();
+    });
+  }
+
+  const pauseModalEl = document.getElementById('pauseModal');
+  if (pauseModalEl) {
+    pauseModalEl.addEventListener('hidden.bs.modal', () => {
+      resumeTimer();
+    });
+  }
+
+  
+  document.getElementById('startButton').onclick = () => {
+    welcomeModal.hide();
+    startTimer();
+  };
+
+  document.getElementById('pauseButton').onclick = () => {
+    pauseTimer();
+    const pauseModal = new bootstrap.Modal(document.getElementById('pauseModal'));
+    pauseModal.show();
+  };
+
+  document.getElementById('resumeButton').onclick = () => {
+    const pauseModalEl = document.getElementById('pauseModal');
+    const pauseModal = bootstrap.Modal.getInstance(pauseModalEl);
+    pauseModal.hide();
+    resumeTimer();
+  };
+});
+
 // Generate a seeded Latin square for the current date
 const solution = generateSeededLatinSquare(gridSize, today);
 console.log("Daily solution grid:", solution);
@@ -241,14 +281,50 @@ document.getElementById('kenken').addEventListener('click', (e) => {
 
 // Timer setup
 let timerInterval;
-let startTime = Date.now();
-timerInterval = setInterval(() => {
-  const elapsed = Math.floor((Date.now() - startTime) / 1000);
-  const minutes = Math.floor(elapsed / 60);
-  const seconds = elapsed % 60;
-  const paddedSeconds = seconds.toString().padStart(2, '0');
-  document.getElementById('timer').innerText = ` ${minutes}:${paddedSeconds}`;
-}, 1000);
+let startTime;
+let elapsed = 0;
+let isPaused = false;
+
+// Timer functions
+function startTimer() {
+  startTime = Date.now() - elapsed * 1000;
+  timerInterval = setInterval(updateTimer, 1000); // Update every second
+  isPaused = false;
+}
+
+function updateTimer() {
+  if (!isPaused) {
+    elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    document.getElementById('timer').innerText = ` ${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+}
+
+function pauseTimer() {
+  isPaused = true;
+  clearInterval(timerInterval);
+  console.log(`Timer paused at ${elapsed} seconds`);
+}
+
+function resumeTimer() {
+  startTime = Date.now() - elapsed * 1000;
+  timerInterval = setInterval(updateTimer, 1000);
+  isPaused = false;
+  console.log(`Timer resumed at ${elapsed} seconds`);
+}
+
+// Pause timer if window loses focus, resume if regains focus and not paused by user
+window.addEventListener('blur', () => {
+  if (!isPaused) pauseTimer();
+  console.log(`Timer paused due to window blur at ${elapsed} seconds`);
+});
+window.addEventListener('focus', () => {
+  // Only resume if not paused by user
+  const pauseModal = document.getElementById('pauseModal');
+  if (!pauseModal.classList.contains('show') && isPaused) resumeTimer();
+  console.log(`Timer resumed due to window focus at ${elapsed} seconds`);
+});
 
 // Handle space key to toggle pencil mode
 window.addEventListener('keydown', (e) => {
@@ -607,13 +683,16 @@ function disableImputs(){
   });
   // change check puzzle to share button
   document.getElementById('checkPuzzle').innerHTML = `Share <i class="fa-solid fa-share-nodes"></i>`;
-  // disable reset puzzle button
+  // disable reset puzzle, paus, undo, redo buttons
   document.getElementById('clear-game').disabled = true;
+  document.getElementById('undo-button').disabled = true;
+  document.getElementById('redo-button').disabled = true;
+  document.getElementById('pauseButton').disabled = true;
 }
 
 // ADDITIONAL FEATURES
-// Make the timer only run when the window is focused and pause it when not focused
-// Create a start modal that allows the user to start a new game or continue an existing one
+// DONE - Make the timer only run when the window is focused and pause it when not focused
+// DONE - Create a start modal that allows the user to start a new game or continue an existing one
 // Check for more than one solution and change the cages accordingly
 // Copy this into a 4x4 version
 // DONE - Don't allow replay after completion
