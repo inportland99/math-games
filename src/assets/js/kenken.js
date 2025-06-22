@@ -7,8 +7,8 @@ let undoStack = [];
 let redoStack = [];
 const d = new Date()
 const inputs = [];
-let today = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-const rand = mulberry32(today);
+let todaySeed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+const rand = mulberry32(todaySeed);
 let solved = false;
 // Timer setup
 let timerInterval;
@@ -34,14 +34,11 @@ const cageColors = [
   '#E2F0CB'  // pastel lime
 ];
 
-window.onload = function() {
-  const d = new Date();
-  document.getElementById("daily-number").textContent = `🗓️ Daily Game: ${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-}
-
 // Show intro modal on page load
 window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById("daily-number").textContent = `🗓️ Daily Game: ${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
   loadGameState();
+  document.getElementById('timer').innerText = ` ${Math.floor(elapsed / 60)}:${(elapsed % 60).toString().padStart(2, '0')}`;
   startTimer();
   const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
 
@@ -84,7 +81,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // Generate a seeded Latin square for the current date
-const solution = generateSeededLatinSquare(gridSize, today);
+const solution = generateSeededLatinSquare(gridSize, todaySeed);
 console.log("Daily solution grid:", solution);
 
 // Generate cages based on the solution
@@ -295,6 +292,7 @@ document.getElementById('kenken').addEventListener('click', (e) => {
 
 // Timer functions
 function startTimer() {
+  if (solved) return; // Prevent timer from resuming if solved
   startTime = Date.now() - elapsed * 1000;
   timerInterval = setInterval(updateTimer, 1000); // Update every second
   isPaused = false;
@@ -306,7 +304,7 @@ function updateTimer() {
     const minutes = Math.floor(elapsed / 60);
     const seconds = elapsed % 60;
     document.getElementById('timer').innerText = ` ${minutes}:${seconds.toString().padStart(2, '0')}`;
-    saveGameState();
+    updateElapsedTimeInStorage();
   }
 }
 
@@ -317,10 +315,23 @@ function pauseTimer() {
 }
 
 function resumeTimer() {
+  if (solved) return; // Prevent timer from resuming if solved
   startTime = Date.now() - elapsed * 1000;
   timerInterval = setInterval(updateTimer, 1000);
   isPaused = false;
   console.log(`Timer resumed at ${elapsed} seconds`);
+}
+
+function updateElapsedTimeInStorage() {
+  const saved = localStorage.getItem("kenkenGameState");
+  if (!saved) return;
+  try {
+    const data = JSON.parse(saved);
+    data.elapsed = elapsed;
+    localStorage.setItem("kenkenGameState", JSON.stringify(data));
+  } catch (e) {
+    console.error("Could not update elapsed time:", e);
+  }
 }
 
 // Pause timer if window loses focus, resume if regains focus and not paused by user
@@ -561,12 +572,13 @@ function showCheckModal() {
         <br><button id="share-kenken-button" class="btn btn-success mt-3">
           <i class="bi bi-share"></i> Share
         </button>
+        <br><br>Next puzzle will be available at midnight! <br>
       `;
       setTimeout(() => {
         const shareBtn = document.getElementById('share-kenken-button');
         if (shareBtn) {
           shareBtn.addEventListener('click', () => {
-            const shareText = `MPA's Daily KenKen Challenge<br>I solved it in ${document.getElementById('timer').innerText.trim()}! https://games.mathplusacademy.com/kenken/`;
+            const shareText = `MPA's Daily KenKen Challenge\nI solved it in ${document.getElementById('timer').innerText.trim()}! https://games.mathplusacademy.com/kenken/`;
             navigator.clipboard.writeText(shareText).then(() => {
               shareBtn.innerText = "Copied!";
               setTimeout(() => shareBtn.innerHTML = `Share <i class="fa-solid fa-share-nodes"></i>`, 1500);
@@ -620,7 +632,7 @@ function saveGameState() {
     pencilMode: pencilMode,
     elapsed: elapsed,
     solved: solved,
-    date: new Date().toISOString().slice(0, 10)
+    date: d.toISOString().slice(0, 10)
   };
   localStorage.setItem("kenkenGameState", JSON.stringify(data));
 }
@@ -788,22 +800,15 @@ function solver() {
   const count = { value: 0 };
 
   return countSolutions(grid, cages, 0, 0, count);
-
-  // if (count.value === 0) {
-  //   console.log("❌ Puzzle has no solution.");
-  // } else if (count.value === 1) {
-  //   console.log("✅ Puzzle has a unique solution.");
-  // } else {
-  //   console.log("⚠️ Puzzle has multiple solutions.");
-  // }
 }
 
 // ADDITIONAL FEATURES
-// fixed elapsed time changing the saved date and then not reseting the game
-// DONE - Make the timer only run when the window is focused and pause it when not focused
-// DONE - Create a start modal that allows the user to start a new game or continue an existing one
-// Check for more than one solution and change the cages accordingly
 // Copy this into a 4x4 version
+// DONE - last bug is the timer not stopping after game is solved
+// DONE - fixed elapsed time changing the saved date and then not reseting the game
+// DONE - Check for more than one solution and change the cages accordingly
+// DONE - Create a start modal that allows the user to start a new game or continue an existing one
+// DONE - Make the timer only run when the window is focused and pause it when not focused
 // DONE - Don't allow replay after completion
 // DONE - Add a Share button to checkPuzzle modal
 // DONE - Don't load yesterdays game today
