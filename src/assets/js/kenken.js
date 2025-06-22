@@ -606,7 +606,7 @@ function cloneBoardState(board) {
 
 // Save game state to localStorage
 function saveGameState() {
-  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  // const elapsed = Math.floor((Date.now() - startTime) / 1000);
   const data = {
     board: currentBoard,
     pencilMode: pencilMode,
@@ -689,7 +689,111 @@ function disableImputs(){
   document.getElementById('pauseButton').disabled = true;
 }
 
+const N = gridSize; // Size of the grid (N x N)
+
+// Create empty grid
+function createEmptyGrid() {
+  return Array.from({ length: N }, () => Array(N).fill(0));
+}
+
+// Ensure Latin square rule is followed
+function isSafe(grid, row, col, num) {
+  for (let i = 0; i < N; i++) {
+    if (grid[row][i] === num || grid[i][col] === num) return false;
+  }
+  return true;
+}
+
+// Parse cage labels like "20x", "4÷", or "5"
+function parseLabel(label) {
+  if (label.endsWith('+')) return { op: '+', target: parseInt(label) };
+  if (label.endsWith('-')) return { op: '-', target: parseInt(label) };
+  if (label.endsWith('x')) return { op: '*', target: parseInt(label) };
+  if (label.endsWith('÷')) return { op: '/', target: parseInt(label) };
+  return { op: '=', target: parseInt(label) };
+}
+
+// Evaluate a cage if fully filled
+function checkCage(cage, grid) {
+  const values = cage.cells.map(([r, c]) => grid[r][c]);
+  if (values.includes(0)) return true; // Partially filled is allowed
+
+  switch (cage.op) {
+    case '+':
+      return values.reduce((a, b) => a + b) === cage.target;
+    case '*':
+      return values.reduce((a, b) => a * b) === cage.target;
+    case '-':
+      if (values.length !== 2) return false;
+      return Math.abs(values[0] - values[1]) === cage.target;
+    case '/':
+      if (values.length !== 2) return false;
+      const [a, b] = values;
+      return (a / b === cage.target || b / a === cage.target);
+    case '=':
+      return values[0] === cage.target;
+    default:
+      return false;
+  }
+}
+
+// Count up to 2 solutions
+function countSolutions(grid, cages, row = 0, col = 0, count = { value: 0 }) {
+  if (row === N) {
+    count.value++;
+    console.log("Found solution:", grid);
+    return count.value >= 2; // Stop early if more than one solution
+  }
+
+  let [nextRow, nextCol] = col === N - 1 ? [row + 1, 0] : [row, col + 1];
+
+  if (grid[row][col] !== 0) {
+    return countSolutions(grid, cages, nextRow, nextCol, count);
+  }
+
+  for (let num = 1; num <= N; num++) {
+    if (!isSafe(grid, row, col, num)) continue;
+
+    grid[row][col] = num;
+
+    const cage = cages.find(c =>
+      c.cells.some(([r, c]) => r === row && c === col)
+    );
+
+    if (checkCage(cage, grid)) {
+      if (countSolutions(grid, cages, nextRow, nextCol, count)) {
+        grid[row][col] = 0;
+        return true;
+      }
+    }
+
+    grid[row][col] = 0;
+  }
+
+  return false;
+}
+
+function solver() {
+  // 🎯 Preprocess cage labels
+  cages.forEach(cage => Object.assign(cage, parseLabel(cage.label)));
+
+  // 🚀 Run solver
+  const grid = createEmptyGrid();
+  const count = { value: 0 };
+
+  countSolutions(grid, cages, 0, 0, count);
+
+  if (count.value === 0) {
+    console.log("❌ Puzzle has no solution.");
+  } else if (count.value === 1) {
+    console.log("✅ Puzzle has a unique solution.");
+  } else {
+    console.log("⚠️ Puzzle has multiple solutions.");
+  }
+}
+
 // ADDITIONAL FEATURES
+// fixed elapsed time changing the saved date and then not reseting the game
 // DONE - Make the timer only run when the window is focused and pause it when not focused
 // DONE - Create a start modal that allows the user to start a new game or continue an existing one
 // Check for more than one solution and change the cages accordingly
