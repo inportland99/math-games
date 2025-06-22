@@ -1,4 +1,5 @@
 const gridSize = 5;
+const N = 5;
 let currentInput = null; // Track focused input
 let pencilMode = false;
 let currentBoard = [];   // 2D array of { value: string, pencil: [] }
@@ -87,9 +88,18 @@ const solution = generateSeededLatinSquare(gridSize, today);
 console.log("Daily solution grid:", solution);
 
 // Generate cages based on the solution
-const cages = generateCages(solution, rand);
-console.log("Generated cages:", cages);
-
+let attempts = 0;
+while (attempts < 10) {
+  console.log(`Attempting to generate cages, attempt ${attempts + 1}`);
+  cages = generateCages(solution, rand);
+  if (!solver()) {
+    console.log("Generated cages:", cages);
+    break;
+  } else {
+    attempts++;
+    console.log(`Attempt ${attempts + 1}: Cage generation failed, retrying...`);
+  }
+}
 const kenken = document.getElementById('kenken');
 
 document.getElementById('pencilModeSwitch').addEventListener('change', (e) => {
@@ -282,8 +292,6 @@ document.getElementById('kenken').addEventListener('click', (e) => {
     if (input) input.focus();
   }
 });
-
-
 
 // Timer functions
 function startTimer() {
@@ -689,8 +697,6 @@ function disableImputs(){
   document.getElementById('pauseButton').disabled = true;
 }
 
-const N = gridSize; // Size of the grid (N x N)
-
 // Create empty grid
 function createEmptyGrid() {
   return Array.from({ length: N }, () => Array(N).fill(0));
@@ -781,15 +787,15 @@ function solver() {
   const grid = createEmptyGrid();
   const count = { value: 0 };
 
-  countSolutions(grid, cages, 0, 0, count);
+  return countSolutions(grid, cages, 0, 0, count);
 
-  if (count.value === 0) {
-    console.log("❌ Puzzle has no solution.");
-  } else if (count.value === 1) {
-    console.log("✅ Puzzle has a unique solution.");
-  } else {
-    console.log("⚠️ Puzzle has multiple solutions.");
-  }
+  // if (count.value === 0) {
+  //   console.log("❌ Puzzle has no solution.");
+  // } else if (count.value === 1) {
+  //   console.log("✅ Puzzle has a unique solution.");
+  // } else {
+  //   console.log("⚠️ Puzzle has multiple solutions.");
+  // }
 }
 
 // ADDITIONAL FEATURES
